@@ -1,0 +1,307 @@
+import { useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { Upload, Check, RotateCcw, Loader2 } from "lucide-react";
+import { Eyebrow } from "@/components/Eyebrow";
+import { IridescentBadge } from "@/components/IridescentBadge";
+import { garments, lookbook, type Garment, type GarmentCategory } from "@/data/garments";
+import { runTryOn, type TryOnStage, type TryOnResult } from "@/lib/stubs/tryOn";
+import { track } from "@/lib/stubs/analytics";
+import look1 from "@/assets/look-1.jpg";
+import look2 from "@/assets/look-2.jpg";
+import look3 from "@/assets/look-3.jpg";
+import heroModel from "@/assets/hero-model.jpg";
+
+const PRESET_SHOPPERS = [
+  { id: "shopper-a", label: "Shopper A", src: heroModel },
+  { id: "shopper-b", label: "Shopper B", src: look2 },
+  { id: "shopper-c", label: "Shopper C", src: look3 },
+] as const;
+
+const CATEGORY_ORDER: GarmentCategory[] = ["outerwear", "top", "bottom", "shoe", "accessory"];
+const CATEGORY_LABEL: Record<GarmentCategory, string> = {
+  outerwear: "Outerwear",
+  top: "Top",
+  bottom: "Bottom",
+  shoe: "Shoe",
+  accessory: "Accessory",
+};
+
+export function TryOnDemo() {
+  const reduced = useReducedMotion();
+
+  // Shopper selection
+  const [shopperId, setShopperId] = useState<string>(PRESET_SHOPPERS[0].id);
+  const [uploadedShopper, setUploadedShopper] = useState<string | null>(null);
+  const shopperSrc = uploadedShopper
+    ?? PRESET_SHOPPERS.find((s) => s.id === shopperId)?.src
+    ?? PRESET_SHOPPERS[0].src;
+
+  // Garment selection (one per category)
+  const initialSelection = useMemo(() => {
+    const map: Partial<Record<GarmentCategory, string>> = {};
+    lookbook[0].pieces.forEach((id) => {
+      const g = garments.find((g) => g.id === id);
+      if (g) map[g.category] = g.id;
+    });
+    return map;
+  }, []);
+  const [selection, setSelection] = useState<Partial<Record<GarmentCategory, string>>>(initialSelection);
+
+  const selectedGarments: Garment[] = useMemo(
+    () =>
+      CATEGORY_ORDER.map((c) => selection[c])
+        .filter((id): id is string => !!id)
+        .map((id) => garments.find((g) => g.id === id)!)
+        .filter(Boolean),
+    [selection],
+  );
+
+  // Render lifecycle
+  const [stage, setStage] = useState<TryOnStage>({ kind: "idle" });
+  const [result, setResult] = useState<TryOnResult | null>(null);
+
+  // Resolve a "rendered" image deterministically from selection — demo only.
+  const resolvedSrc = useMemo(() => {
+    const ids = Object.values(selection).filter(Boolean) as string[];
+    if (ids.includes("o-saffron-coat")) return look1;
+    if (ids.includes("t-clay-linen")) return look2;
+    if (ids.includes("o-espresso-blazer")) return look3;
+    return shopperSrc;
+  }, [selection, shopperSrc]);
+
+  async function handleRender() {
+    track("tryon_render_start", { shopperId, garments: Object.values(selection) });
+    setResult(null);
+    for await (const s of runTryOn(
+      { shopperImage: shopperSrc, garmentIds: Object.values(selection) as string[] },
+      (_req) => ({
+        id: `tr_${Date.now()}`,
+        imageUrl: resolvedSrc,
+        garments: selectedGarments,
+        durationMs: 1400,
+        confidence: 0.97,
+      }),
+    )) {
+      setStage(s);
+      if (s.kind === "done") {
+        setResult(s.result);
+        track("tryon_render_done", { id: s.result.id });
+      }
+    }
+  }
+
+  // Auto-render once on first mount so visitors see the magic immediately
+  useEffect(() => {
+    handleRender();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // BACKEND STUB — in production we upload to object storage; here we use a local object URL.
+    const url = URL.createObjectURL(file);
+    setUploadedShopper(url);
+    track("tryon_shopper_upload");
+  }
+
+  function reset() {
+    setSelection(initialSelection);
+    setUploadedShopper(null);
+    setShopperId(PRESET_SHOPPERS[0].id);
+  }
+
+  const isRendering = stage.kind === "uploading" || stage.kind === "rendering";
+  const total = selectedGarments.reduce((s, g) => s + g.priceGBP, 0);
+
+  return (
+    <section className="mx-auto max-w-[1400px] px-6 py-16 md:px-10 md:py-24">
+      <div className="grid gap-10 md:grid-cols-12 lg:gap-14">
+        {/* Render canvas — the AI moment */}
+        <div className="md:col-span-7">
+          <div className="relative aspect-[3/4] w-full overflow-hidden rounded-sm bg-canvas-raised shadow-fabric-lg">
+            <AnimatePresence mode="wait">
+              <motion.img
+                key={result?.imageUrl ?? shopperSrc}
+                src={result?.imageUrl ?? shopperSrc}
+                alt="Virtual try-on render"
+                className="absolute inset-0 h-full w-full object-cover"
+                initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 1.02 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: reduced ? 0.2 : 0.9, ease: [0.22, 1, 0.36, 1] }}
+                width={1080}
+                height={1440}
+              />
+            </AnimatePresence>
+
+            {/* Iridescent shimmer while rendering */}
+            {isRendering && (
+              <div
+                className="absolute inset-0 iridescent mix-blend-soft-light"
+                aria-hidden
+              />
+            )}
+
+            {/* Badge */}
+            <div className="absolute left-4 top-4">
+              <IridescentBadge label={isRendering ? "Rendering" : "Rendered by Vestra"} />
+            </div>
+
+            {/* Status pill */}
+            <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3">
+              <div className="rounded-full border border-line bg-canvas/95 px-3 py-1.5 text-[11px] text-ink shadow-fabric-sm">
+                {stage.kind === "uploading" && <>Uploading — {stage.progress}%</>}
+                {stage.kind === "rendering" && <>Draping fabric — {stage.progress}%</>}
+                {stage.kind === "done" && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Check aria-hidden className="h-3 w-3 text-saffron-deep" />
+                    {Math.round((result?.confidence ?? 0) * 100)}% drape confidence · {(result!.durationMs / 1000).toFixed(1)}s
+                  </span>
+                )}
+                {stage.kind === "idle" && <>Ready</>}
+                {stage.kind === "error" && <span className="text-clay">{stage.message}</span>}
+              </div>
+            </div>
+          </div>
+
+          <p className="mt-3 max-w-[60ch] text-xs text-ink-soft">
+            <span className="eyebrow mr-2">Note</span>
+            This is a working demo with simulated rendering — no shopper photo leaves your browser.
+          </p>
+        </div>
+
+        {/* Controls */}
+        <div className="md:col-span-5">
+          <Eyebrow>The dressing room</Eyebrow>
+          <h2
+            className="mt-3 font-display text-ink"
+            style={{
+              fontSize: "clamp(1.75rem, 3.6vw, 2.75rem)",
+              lineHeight: 1.05,
+              letterSpacing: "-0.02em",
+            }}
+          >
+            Compose a look,
+            <br />
+            <span className="italic text-saffron-deep">see it on you.</span>
+          </h2>
+
+          {/* Shopper picker */}
+          <div className="mt-8">
+            <Eyebrow as="div">Shopper</Eyebrow>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              {PRESET_SHOPPERS.map((s) => {
+                const active = !uploadedShopper && shopperId === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => {
+                      setUploadedShopper(null);
+                      setShopperId(s.id);
+                    }}
+                    aria-pressed={active}
+                    aria-label={`Use ${s.label}`}
+                    className={`relative h-14 w-14 overflow-hidden rounded-full border transition ${
+                      active ? "border-ink ring-2 ring-saffron ring-offset-2 ring-offset-canvas" : "border-line hover:border-ink"
+                    }`}
+                  >
+                    <img src={s.src} alt="" className="h-full w-full object-cover" />
+                  </button>
+                );
+              })}
+
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-canvas-raised px-3 py-2 text-xs text-ink-soft transition hover:border-ink hover:text-ink">
+                <Upload aria-hidden className="h-3.5 w-3.5" />
+                Upload photo
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={onUpload}
+                  aria-label="Upload a shopper photograph"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* Garment picker per category */}
+          <div className="mt-8 space-y-5">
+            {CATEGORY_ORDER.map((cat) => {
+              const opts = garments.filter((g) => g.category === cat);
+              if (opts.length === 0) return null;
+              return (
+                <div key={cat}>
+                  <div className="flex items-baseline justify-between">
+                    <Eyebrow as="div">{CATEGORY_LABEL[cat]}</Eyebrow>
+                    {selection[cat] && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = { ...selection };
+                          delete next[cat];
+                          setSelection(next);
+                        }}
+                        className="text-[11px] text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {opts.map((g) => {
+                      const active = selection[cat] === g.id;
+                      return (
+                        <button
+                          key={g.id}
+                          type="button"
+                          onClick={() => setSelection({ ...selection, [cat]: g.id })}
+                          aria-pressed={active}
+                          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition ${
+                            active
+                              ? "border-ink bg-ink text-canvas"
+                              : "border-line bg-canvas text-ink-soft hover:border-ink hover:text-ink"
+                          }`}
+                        >
+                          <span
+                            aria-hidden
+                            className="h-2.5 w-2.5 rounded-full ring-1 ring-inset ring-black/10"
+                            style={{ background: g.swatch }}
+                          />
+                          {g.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Render action */}
+          <div className="mt-10 flex flex-wrap items-center gap-3 border-t border-line pt-6">
+            <button type="button" onClick={handleRender} disabled={isRendering} className="btn-saffron">
+              {isRendering ? (
+                <>
+                  <Loader2 aria-hidden className="h-4 w-4 animate-spin" />
+                  Draping…
+                </>
+              ) : (
+                <>Render the look</>
+              )}
+            </button>
+            <button type="button" onClick={reset} className="btn-ghost">
+              <RotateCcw aria-hidden className="h-4 w-4" />
+              Reset
+            </button>
+            <div className="ml-auto text-right">
+              <div className="eyebrow">Outfit total</div>
+              <div className="font-display text-2xl text-ink">£{total.toLocaleString()}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
