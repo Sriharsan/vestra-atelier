@@ -1,29 +1,46 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
+import { Hero } from "@/sections/Hero";
+import { HowItWorks } from "@/sections/HowItWorks";
+import { Lookbook } from "@/sections/Lookbook";
+import { Stats } from "@/sections/Stats";
+import { ForBrandsSection } from "@/sections/ForBrandsSection";
+import { CTASection } from "@/sections/CTASection";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Your App" },
-      { name: "description", content: "Replace this with a one-sentence description of your app." },
-      { property: "og:title", content: "Your App" },
-      { property: "og:description", content: "Replace this with a one-sentence description of your app." },
+      { title: "Vestra — See Every Look Before You Buy." },
+      {
+        name: "description",
+        content:
+          "The virtual fitting room for luxury fashion. Shoppers see the full outfit on themselves, before they buy.",
+      },
+      { property: "og:title", content: "Vestra — See Every Look Before You Buy." },
+      {
+        property: "og:description",
+        content:
+          "Couture-grade try-on. Returns down 38%. Add-to-cart up 24%. The dressing room follows the shopper home.",
+      },
     ],
   }),
-  component: Index,
+  component: HomePage,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+function HomePage() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="min-h-screen bg-canvas text-ink">
+      <Header />
+      <main id="main">
+        <Hero />
+        <HowItWorks />
+        <Lookbook />
+        <Stats />
+        <ForBrandsSection />
+        <CTASection />
+      </main>
+      <Footer />
     </div>
   );
 }
