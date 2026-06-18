@@ -35,15 +35,17 @@ export function CTASection() {
           </div>
 
           <div className="md:col-span-5">
-            <div className="relative aspect-square w-full max-w-md md:ml-auto">
-              <div className="absolute inset-0 rounded-full iridescent opacity-95 blur-3xl" aria-hidden />
-              <div className="absolute inset-8 rounded-full iridescent opacity-80" aria-hidden />
-              <div className="absolute inset-0 grid place-items-center">
-                <div className="rounded-full border border-line bg-canvas px-6 py-3 shadow-fabric">
-                  <span className="eyebrow">The AI moment</span>
-                </div>
-              </div>
-            </div>
+            <figure className="relative aspect-square w-full max-w-md md:ml-auto">
+              <div className="absolute inset-0 rounded-sm bg-canvas-raised shadow-fabric paper-grain" aria-hidden />
+              <div className="absolute inset-x-10 top-1/2 h-px bg-saffron" aria-hidden />
+              <figcaption className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
+                <span className="eyebrow text-ink-soft">Look № 04</span>
+                <span className="font-display text-3xl text-ink" style={{ letterSpacing: "-0.01em" }}>
+                  Maison Aurelle
+                </span>
+                <span className="text-xs text-ink-soft">Spring atelier · rendered on the shopper</span>
+              </figcaption>
+            </figure>
           </div>
         </div>
       </div>
