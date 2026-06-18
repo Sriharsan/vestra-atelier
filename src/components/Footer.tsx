@@ -46,9 +46,15 @@ export function Footer() {
           </div>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <span>© {new Date().getFullYear()} Vestra Atelier Ltd.</span>
-            <Link to="/" className="link-underline">Privacy</Link>
-            <Link to="/" className="link-underline">Terms</Link>
-            <Link to="/" className="link-underline">Press</Link>
+            <Link to="/privacy" className="link-underline">
+              Privacy
+            </Link>
+            <Link to="/terms" className="link-underline">
+              Terms
+            </Link>
+            <Link to="/" className="link-underline">
+              Press
+            </Link>
           </div>
         </div>
       </div>
