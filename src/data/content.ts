@@ -234,6 +234,10 @@ export const faq = [
     q: "What about sizing and fit recommendations?",
     a: "Vestra shows the shopper how the garment looks, not how it will fit in a specific size. We complement size-recommendation tools rather than replacing them.",
   },
+  {
+    q: "Can I try the live rendering on my own catalogue?",
+    a: "The demo on this site uses sample looks to illustrate the experience. To run a live pilot with your own catalogue and shopper photos, book a demo and our team will set up a private atelier for your brand.",
+  },
 ];
 
 export const outfitPresets = [

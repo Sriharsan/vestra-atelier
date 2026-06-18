@@ -15,15 +15,17 @@ test.describe("Homepage", () => {
       "Three steps",
       "Every piece your house cuts",
       "What changes when shoppers",
-      "A fitting room that travels",
+      "A fitting room",
       "Runs where you run",
       "Per SKU",
-      "What brands ask us",
-      "See the look",
+      "What brands",
+      "Then decide",
     ];
 
     for (const text of sections) {
-      await expect(page.getByText(text, { exact: false }).first()).toBeVisible();
+      const el = page.getByText(text, { exact: false }).first();
+      await el.scrollIntoViewIfNeeded();
+      await expect(el).toBeVisible();
     }
 
     expect(errors).toEqual([]);

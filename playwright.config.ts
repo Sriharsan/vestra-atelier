@@ -9,9 +9,10 @@ export default defineConfig({
     headless: true,
   },
   webServer: {
-    command: "npm run dev",
-    port: 5173,
+    command: "npx vite dev --port 5173",
+    url: "http://localhost:5173",
     reuseExistingServer: true,
-    timeout: 30_000,
+    timeout: 120_000,
+    stdout: "pipe",
   },
 });

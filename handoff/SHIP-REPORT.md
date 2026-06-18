@@ -68,11 +68,23 @@ No token violations found in section components. No raw hex, no default Tailwind
 - Cookie consent: analytics blocked until accepted
 - Secrets: none found in source or history
 
+### Try-on demo mode
+- `TRYON_MODE = demo`: mock rendering with simulated delay
+- "Preview" badge displayed on rendered results (`src/sections/TryOnDemo.tsx`)
+- FAQ entry explains demo vs. live pilot (`src/data/content.ts`)
+
+### Handoff package
+- `handoff/README.md` — product description, stack, run locally, folder map
+- `handoff/CLIENT-WALKTHROUGH.md` — non-technical tour of every page
+- `handoff/DEPLOY.md` — Vercel deployment runbook
+- `handoff/WHAT-I-NEED-FROM-YOU.md` — items client must supply
+- `handoff/SHIP-REPORT.md` — this file
+
 ### Green gate
 - TypeScript: zero errors
 - ESLint: zero errors (6 pre-existing shadcn react-refresh warnings)
 - Build: succeeds cleanly
-- Tests: 18/18 passing
+- Tests: 18 unit + 6 E2E passing
 
 ---
 
@@ -82,13 +94,13 @@ No token violations found in section components. No raw hex, no default Tailwind
 |-----------|--------|-------|
 | Security headers | Real | Applied to every response |
 | Input validation (Zod) | Real | Contact form and try-on request |
-| Rate limiting | Real (in-memory) | Must move to Redis / Cloudflare Durable Objects for production |
+| Rate limiting | Real (in-memory) | Must move to Redis / KV for production |
 | Cookie consent | Real | Blocks analytics tracking until accepted |
-| Try-on inference | Stub | Returns mock result after simulated delay |
+| Try-on inference | Stub (demo) | Returns mock result with "Preview" badge |
 | Form submission | Stub | Console output only, no CRM/email delivery |
 | Newsletter subscription | Stub | Console output only |
-| Photo storage | Stub | No R2/S3 integration |
-| Analytics pipeline | Stub | Console output in dev mode |
+| Photo storage | Stub | No cloud storage integration |
+| Analytics pipeline | Stub | Console output in dev mode, consent-gated |
 | Authentication | Stub | No real auth flow |
 
 ---
@@ -96,12 +108,12 @@ No token violations found in section components. No raw hex, no default Tailwind
 ## Only you can supply
 
 - **Real try-on model or API keys** — the `generateTryOn` stub needs a real inference endpoint
-- **Brand assets** — real logo, OG image, favicon, PWA icons (icon-192.png, icon-512.png)
+- **Brand assets** — real logo, OG image, favicon, PWA icons
 - **Real statistics** — the marketing stats (38% returns, 24% ATC, etc.) are placeholders
-- **Production domain** — configure `vestra.ai` DNS, SSL, Cloudflare Workers deployment
-- **Hosting and database accounts** — Cloudflare account, R2 storage, KV for rate limiting
-- **Error tracking** — Sentry project and `SENTRY_DSN`
-- **Analytics** — Segment/PostHog and `ANALYTICS_WRITE_KEY`
+- **Production domain** — configure DNS and SSL
+- **Error tracking** — Sentry or similar
+- **Analytics** — PostHog, Mixpanel, GA4, or similar
 - **Email delivery** — CRM webhook for contact form and newsletter
 - **Real testimonials and brand logos** — current brands and quotes are placeholders
 - **Pricing confirmation** — the Atelier/Maison/Haute tiers are placeholder copy
+- **Legal review** — privacy policy and terms templates need legal sign-off
