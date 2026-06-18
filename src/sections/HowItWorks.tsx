@@ -25,8 +25,11 @@ export function HowItWorks() {
 
         <ol className="md:col-span-8 flex flex-col">
           {howItWorks.map((step, i) => (
-            <Reveal key={step.n} delay={i * 0.1}>
-              <li className="grid grid-cols-[auto_1fr] items-start gap-6 border-t border-line py-10 md:grid-cols-[160px_1fr] md:gap-12 md:py-14">
+            <li key={step.n} className="border-t border-line">
+              <Reveal
+                delay={i * 0.1}
+                className="grid grid-cols-[auto_1fr] items-start gap-6 py-10 md:grid-cols-[160px_1fr] md:gap-12 md:py-14"
+              >
                 <span
                   className="font-display text-saffron-deep"
                   style={{
@@ -47,8 +50,8 @@ export function HowItWorks() {
                   </h3>
                   <p className="mt-3 max-w-[52ch] text-ink-soft">{step.body}</p>
                 </div>
-              </li>
-            </Reveal>
+              </Reveal>
+            </li>
           ))}
         </ol>
       </div>
