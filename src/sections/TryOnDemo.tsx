@@ -266,7 +266,7 @@ export function TryOnDemo() {
                         >
                           <span
                             aria-hidden
-                            className="h-2.5 w-2.5 rounded-full ring-1 ring-inset ring-black/10"
+                            className="h-2.5 w-2.5 rounded-full ring-1 ring-inset ring-ink/10"
                             style={{ background: g.swatch }}
                           />
                           {g.name}
