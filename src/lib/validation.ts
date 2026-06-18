@@ -1,3 +1,4 @@
+// WIRE THIS WHEN BACKEND EXISTS — call .safeParse() in every server-side request handler.
 import { z } from "zod";
 
 export const contactFormSchema = z.object({

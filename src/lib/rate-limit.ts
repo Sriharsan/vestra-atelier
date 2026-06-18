@@ -1,4 +1,5 @@
-// BACKEND STUB — in production, use Cloudflare Workers KV or Durable Objects for distributed rate limiting.
+// WIRE THIS WHEN BACKEND EXISTS — call checkRateLimit() in every server-side request handler.
+// In production, use Cloudflare Workers KV or Durable Objects for distributed rate limiting.
 const windows = new Map<string, { count: number; resetAt: number }>();
 
 export function checkRateLimit(

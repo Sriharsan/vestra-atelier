@@ -49,8 +49,8 @@ export function ForBrandsSection() {
 
             <ul className="mt-10 grid gap-y-8 sm:grid-cols-2 sm:gap-x-10">
               {features.map((f, i) => (
-                <Reveal key={f.title} delay={i * 0.05}>
-                  <li className="border-t border-line pt-5">
+                <li key={f.title} className="border-t border-line pt-5">
+                  <Reveal delay={i * 0.05}>
                     <h3
                       className="font-display text-xl text-ink"
                       style={{ letterSpacing: "-0.01em" }}
@@ -58,8 +58,8 @@ export function ForBrandsSection() {
                       {f.title}
                     </h3>
                     <p className="mt-2 text-sm leading-relaxed text-ink-soft">{f.body}</p>
-                  </li>
-                </Reveal>
+                  </Reveal>
+                </li>
               ))}
             </ul>
           </div>
