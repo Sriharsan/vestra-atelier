@@ -3,6 +3,9 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { applySecurityHeaders } from "./lib/security-headers";
+import { tryOnRequestSchema } from "./lib/validation";
+import { checkRateLimit } from "./lib/rate-limit";
+import { generateTryOn, getProviderName } from "./lib/tryon-provider.server";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -19,8 +22,6 @@ async function getServerEntry(): Promise<ServerEntry> {
   return serverEntryPromise;
 }
 
-// h3 swallows in-handler throws into a normal 500 Response with body
-// {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
 async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
   if (response.status < 500) return response;
   const contentType = response.headers.get("content-type") ?? "";
@@ -38,16 +39,117 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   });
 }
 
+function jsonResponse(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+function clientIp(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0].trim();
+  return "unknown";
+}
+
+const MAX_BODY_BYTES = 12 * 1024 * 1024; // 12 MB (base64 images are large)
+const SESSION_GEN_CAP = 20;
+const sessionGenerations = new Map<string, number>();
+
+async function handleTryOn(request: Request): Promise<Response> {
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed" }, 405);
+  }
+
+  const ip = clientIp(request);
+  const rateCheck = checkRateLimit(ip, 10, 60_000);
+  if (!rateCheck.allowed) {
+    return jsonResponse(
+      { error: "Rate limit exceeded", retryAfterMs: rateCheck.retryAfterMs },
+      429,
+    );
+  }
+
+  const genCount = sessionGenerations.get(ip) ?? 0;
+  if (genCount >= SESSION_GEN_CAP) {
+    return jsonResponse(
+      {
+        error: "Session generation cap reached",
+        detail: `Maximum ${SESSION_GEN_CAP} generations per session to manage cost.`,
+      },
+      429,
+    );
+  }
+
+  const contentLength = parseInt(request.headers.get("content-length") ?? "0", 10);
+  if (contentLength > MAX_BODY_BYTES) {
+    return jsonResponse({ error: "Request body too large (max 12 MB)" }, 413);
+  }
+
+  let rawBody: unknown;
+  try {
+    rawBody = await request.json();
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body" }, 400);
+  }
+
+  const parsed = tryOnRequestSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return jsonResponse({ error: "Validation failed", issues: parsed.error.issues }, 400);
+  }
+
+  const { shopperImage, garmentImage, category } = parsed.data as {
+    shopperImage: string;
+    garmentImage: string;
+    category?: string;
+  };
+
+  try {
+    const result = await generateTryOn(
+      shopperImage,
+      garmentImage,
+      (category as "tops" | "bottoms" | "one-pieces" | "auto") ?? "auto",
+    );
+
+    sessionGenerations.set(ip, genCount + 1);
+
+    return jsonResponse({
+      imageUrl: result.imageUrl,
+      durationMs: result.durationMs,
+      confidence: result.confidence,
+      provider: result.provider,
+      mock: result.provider === "mock",
+    });
+  } catch (error) {
+    console.error("Try-on provider error:", error);
+    return jsonResponse({
+      imageUrl: "",
+      durationMs: 0,
+      confidence: 0,
+      provider: "mock",
+      mock: true,
+      fallback: true,
+      message: "Provider unavailable — showing preview instead.",
+    });
+  }
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const url = new URL(request.url);
+
     if (url.pathname === "/api/health") {
       return applySecurityHeaders(
-        new Response(JSON.stringify({ status: "ok", timestamp: new Date().toISOString() }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
+        jsonResponse({ status: "ok", timestamp: new Date().toISOString() }),
       );
+    }
+
+    if (url.pathname === "/api/tryon") {
+      return applySecurityHeaders(await handleTryOn(request));
+    }
+
+    if (url.pathname === "/api/tryon/provider") {
+      return applySecurityHeaders(jsonResponse({ provider: getProviderName() }));
     }
 
     try {

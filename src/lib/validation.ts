@@ -1,4 +1,3 @@
-// WIRE THIS WHEN BACKEND EXISTS — call .safeParse() in every server-side request handler.
 import { z } from "zod";
 
 export const contactFormSchema = z.object({
@@ -13,8 +12,10 @@ export const contactFormSchema = z.object({
 export type ContactFormData = z.infer<typeof contactFormSchema>;
 
 export const tryOnRequestSchema = z.object({
-  shopperImage: z.union([z.string().min(1), z.instanceof(File)]),
-  garmentIds: z.array(z.string()).min(1).max(10),
+  shopperImage: z.string().min(1, "Shopper image is required"),
+  garmentImage: z.string().min(1, "Garment image is required"),
+  garmentIds: z.array(z.string()).min(1).max(10).optional(),
+  category: z.enum(["tops", "bottoms", "one-pieces", "auto"]).optional(),
 });
 
 export type TryOnRequestData = z.infer<typeof tryOnRequestSchema>;

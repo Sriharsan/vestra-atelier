@@ -4,9 +4,9 @@ import { contactFormSchema, tryOnRequestSchema } from "./validation";
 describe("contactFormSchema", () => {
   it("accepts a valid payload", () => {
     const result = contactFormSchema.safeParse({
-      name: "Hélène Marceau",
-      email: "helene@maison-aurelle.com",
-      house: "Maison Aurelle",
+      name: "Kavitha Ramachandran",
+      email: "kavitha@ateliervestra.in",
+      house: "Atelier Vestra",
       role: "Head of Ecommerce",
       message: "Interested in the Atelier tier.",
     });
@@ -55,33 +55,34 @@ describe("contactFormSchema", () => {
 });
 
 describe("tryOnRequestSchema", () => {
-  it("accepts valid string image with garment IDs", () => {
+  it("accepts valid shopper + garment images", () => {
     const result = tryOnRequestSchema.safeParse({
       shopperImage: "data:image/jpeg;base64,abc123",
-      garmentIds: ["gmt-001", "gmt-002"],
+      garmentImage: "https://example.com/garment.jpg",
     });
     expect(result.success).toBe(true);
   });
 
-  it("rejects empty garment IDs array", () => {
+  it("accepts with optional garmentIds and category", () => {
     const result = tryOnRequestSchema.safeParse({
       shopperImage: "data:image/jpeg;base64,abc123",
-      garmentIds: [],
+      garmentImage: "https://example.com/garment.jpg",
+      garmentIds: ["gmt-001", "gmt-002"],
+      category: "tops",
     });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects more than 10 garment IDs", () => {
-    const result = tryOnRequestSchema.safeParse({
-      shopperImage: "data:image/jpeg;base64,abc123",
-      garmentIds: Array.from({ length: 11 }, (_, i) => `gmt-${i}`),
-    });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it("rejects missing shopper image", () => {
     const result = tryOnRequestSchema.safeParse({
-      garmentIds: ["gmt-001"],
+      garmentImage: "https://example.com/garment.jpg",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects missing garment image", () => {
+    const result = tryOnRequestSchema.safeParse({
+      shopperImage: "data:image/jpeg;base64,abc123",
     });
     expect(result.success).toBe(false);
   });
@@ -89,7 +90,25 @@ describe("tryOnRequestSchema", () => {
   it("rejects empty string as shopper image", () => {
     const result = tryOnRequestSchema.safeParse({
       shopperImage: "",
-      garmentIds: ["gmt-001"],
+      garmentImage: "https://example.com/garment.jpg",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects more than 10 garment IDs", () => {
+    const result = tryOnRequestSchema.safeParse({
+      shopperImage: "data:image/jpeg;base64,abc123",
+      garmentImage: "https://example.com/garment.jpg",
+      garmentIds: Array.from({ length: 11 }, (_, i) => `gmt-${i}`),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects invalid category", () => {
+    const result = tryOnRequestSchema.safeParse({
+      shopperImage: "data:image/jpeg;base64,abc123",
+      garmentImage: "https://example.com/garment.jpg",
+      category: "invalid",
     });
     expect(result.success).toBe(false);
   });
