@@ -220,8 +220,13 @@ export function TryOnDemo() {
             )}
 
             {/* Badge */}
-            <div className="absolute left-4 top-4">
+            <div className="absolute left-4 top-4 flex items-center gap-2">
               <IridescentBadge label={isRendering ? "Rendering" : "Rendered by Vestra"} />
+              {!isRendering && result && (
+                <span className="rounded-full border border-line bg-canvas/90 px-2.5 py-0.5 text-[10px] font-medium text-ink-soft">
+                  Preview
+                </span>
+              )}
             </div>
 
             {/* Status pill and action buttons */}
