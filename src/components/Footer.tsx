@@ -31,8 +31,8 @@ export function Footer() {
             <Eyebrow>Find us</Eyebrow>
             <ul className="mt-4 flex flex-col gap-2 text-sm text-ink-soft">
               <li>{brand.domain}</li>
-              <li>atelier@vestra.ai</li>
-              <li>Paris · London</li>
+              <li>atelier@vestra.in</li>
+              <li>Bengaluru, India</li>
             </ul>
           </div>
         </div>

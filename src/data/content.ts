@@ -1,10 +1,16 @@
 /**
  * All marketing copy in one place. Edit here, not in components.
+ *
+ * LOCALE = IN — sample data uses Indian names, addresses, ₹ prices, +91 phones.
+ * Brand name stays "Vestra". Only sample data and contacts are localized.
+ *
+ * Swap in real brand names you have rights to use where you see
+ * "Atelier Vestra", "Loom & Co", "Maison Nord".
  */
 
 export const brand = {
   name: "VESTRA",
-  domain: "vestra.ai",
+  domain: "vestra.in",
   tagline: "See Every Look Before You Buy.",
   manifesto: "Helping shoppers see themselves before they buy.",
   description:
@@ -80,9 +86,9 @@ export const features = [
 ];
 
 export const brandsUsing = [
-  "Maison Aurelle",
-  "Hessen & Co.",
-  "Atelier Noir",
+  "Atelier Vestra",
+  "Loom & Co",
+  "Maison Nord",
   "Fjord Studio",
   "Soleil Paris",
   "Marcellin",
@@ -93,8 +99,8 @@ export const brandsUsing = [
 export const testimonial = {
   quote:
     "We replaced six months of sample shoots with one upload pipeline. Returns dropped by a third in the first quarter — and our merchandising team can finally see which pieces flatter, before we cut them.",
-  author: "Hélène Marceau",
-  role: "Head of Ecommerce, Maison Aurelle",
+  author: "Kavitha Ramachandran",
+  role: "Head of Ecommerce, Atelier Vestra",
 };
 
 export const forBrands = {
@@ -105,7 +111,7 @@ export const forBrands = {
     "Live on Shopify, Salesforce Commerce Cloud, and custom storefronts",
     "Average integration: 6 working days",
     "Per-SKU pricing, no per-shopper fees",
-    "EU and US data residency",
+    "India and global data residency",
   ],
 };
 
@@ -113,7 +119,7 @@ export const aboutSections = [
   {
     eyebrow: "The house",
     title: "Built by people who have run the dressing room.",
-    body: "Vestra was founded by a former buyer at Browns and two computer-vision researchers. We started because we were tired of watching beautiful garments come back in boxes — bought hopefully, returned silently.",
+    body: "Vestra was founded by a former buyer and two computer-vision researchers. We started because we were tired of watching beautiful garments come back in boxes — bought hopefully, returned silently.",
   },
   {
     eyebrow: "The method",
@@ -131,8 +137,9 @@ export const contact = {
   eyebrow: "Begin the conversation",
   title: "Tell us about your house.",
   body: "A short note is enough. We reply within a working day.",
-  email: "atelier@vestra.ai",
-  address: "12 rue de Sévigné, 75004 Paris — 41 Great Eastern Street, London EC2A 3EY",
+  email: "atelier@vestra.in",
+  phone: "+91 80 4567 8900",
+  address: "91 MG Road, Bengaluru 560001, Karnataka, India",
 };
 
 export const problem = {
@@ -141,7 +148,7 @@ export const problem = {
   body: "Sixty-four percent of fashion returns happen because the garment didn't look the way the shopper expected. The dressing room closes when the browser opens — and the return label is already in the box.",
   stats: [
     { value: "64%", note: "of returns are fit or appearance related" },
-    { value: "£7B", note: "returned fashion in the UK alone, annually" },
+    { value: "₹58,000 Cr", note: "returned fashion in India alone, annually" },
   ],
 };
 
@@ -171,7 +178,7 @@ export const pricing = {
     {
       name: "Atelier",
       audience: "For emerging houses",
-      price: "From £490 / mo",
+      price: "From ₹39,900 / mo",
       includes: [
         "Up to 200 SKUs",
         "Unlimited shopper renders",
@@ -183,7 +190,7 @@ export const pricing = {
     {
       name: "Maison",
       audience: "For established brands",
-      price: "From £1,490 / mo",
+      price: "From ₹1,19,900 / mo",
       includes: [
         "Up to 2,000 SKUs",
         "Unlimited shopper renders",
@@ -243,11 +250,24 @@ export const faq = [
 export const outfitPresets = [
   {
     name: "Casual",
-    garmentIds: ["o-bone-trench", "t-sage-knit", "b-saffron-trouser", "s-loafer-cognac"],
+    garmentIds: ["o-bone-trench", "t-sage-knit", "b-denim-indigo", "s-sneaker-white"],
   },
   {
     name: "Professional",
-    garmentIds: ["o-espresso-blazer", "t-cream-silk", "b-ink-trouser", "s-loafer-cognac"],
+    garmentIds: ["o-espresso-blazer", "t-oxford-shirt", "b-ink-trouser", "s-loafer-cognac"],
   },
-  { name: "Night Out", garmentIds: ["t-clay-linen", "a-sage-scarf", "s-heel-nude"] },
+  {
+    name: "Night Out",
+    garmentIds: ["t-clay-linen", "a-sage-scarf", "s-heel-nude"],
+  },
+  {
+    name: "Festive",
+    garmentIds: [
+      "o-nehru-jacket",
+      "t-kurta-white",
+      "b-salwar-black",
+      "s-kolhapuri",
+      "a-dupatta-gold",
+    ],
+  },
 ];

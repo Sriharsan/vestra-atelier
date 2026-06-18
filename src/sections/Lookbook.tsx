@@ -38,7 +38,7 @@ export function Lookbook() {
                 <div className="relative aspect-[3/4] overflow-hidden rounded-sm bg-canvas shadow-fabric">
                   <img
                     src={look.src}
-                    alt={`${look.title} — ${look.house}`}
+                    alt={`${look.title} — ${look.brand}`}
                     className="h-full w-full object-cover transition-transform duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.03]"
                     loading="lazy"
                     width={900}
@@ -56,7 +56,7 @@ export function Lookbook() {
                     >
                       {look.title}
                     </h3>
-                    <p className="mt-1 text-sm text-ink-soft">{look.house}</p>
+                    <p className="mt-1 text-sm text-ink-soft">{look.brand}</p>
                   </div>
                   <span className="eyebrow mt-2 shrink-0">№ {String(i + 1).padStart(2, "0")}</span>
                 </figcaption>
