@@ -245,7 +245,7 @@ export function TryOnDemo() {
                   <a
                     href={result.imageUrl}
                     download="vestra-look.jpg"
-                    className="btn-ghost inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas/95 px-3 py-1.5 text-[11px] shadow-fabric-sm"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas/95 px-3 py-1.5 text-[11px] font-medium shadow-fabric-sm transition-colors hover:border-ink"
                   >
                     <Download aria-hidden className="h-3 w-3" />
                     Save
@@ -259,7 +259,7 @@ export function TryOnDemo() {
                         track("tryon_share");
                         setTimeout(() => setShareTooltip(false), 1500);
                       }}
-                      className="btn-ghost inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas/95 px-3 py-1.5 text-[11px] shadow-fabric-sm"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas/95 px-3 py-1.5 text-[11px] font-medium shadow-fabric-sm transition-colors hover:border-ink"
                     >
                       <Share2 aria-hidden className="h-3 w-3" />
                       Share
@@ -273,7 +273,7 @@ export function TryOnDemo() {
                   <button
                     type="button"
                     onClick={() => garmentListRef.current?.scrollIntoView({ behavior: "smooth" })}
-                    className="btn-ghost inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas/95 px-3 py-1.5 text-[11px] shadow-fabric-sm"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas/95 px-3 py-1.5 text-[11px] font-medium shadow-fabric-sm transition-colors hover:border-ink"
                   >
                     <ShoppingBag aria-hidden className="h-3 w-3" />
                     Shop the look
