@@ -24,6 +24,7 @@ export const Route = createFileRoute("/for-brands")({
           "A virtual fitting room for fashion ecommerce — script-tag install, per-SKU pricing, EU & US data residency.",
       },
     ],
+    links: [{ rel: "canonical", href: "https://vestra.ai/for-brands" }],
   }),
   component: ForBrandsPage,
 });
@@ -60,7 +61,9 @@ function ForBrandsPage() {
                   Speak to the atelier
                   <ArrowUpRight aria-hidden className="h-4 w-4" />
                 </Link>
-                <Link to="/try-on" className="btn-ghost">See the demo</Link>
+                <Link to="/try-on" className="btn-ghost">
+                  See the demo
+                </Link>
               </div>
             </div>
 
