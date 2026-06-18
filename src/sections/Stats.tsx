@@ -14,7 +14,8 @@ export function Stats() {
           letterSpacing: "-0.02em",
         }}
       >
-        What changes when shoppers can <span className="italic text-saffron-deep">see themselves.</span>
+        What changes when shoppers can{" "}
+        <span className="italic text-saffron-deep">see themselves.</span>
       </h2>
 
       <dl className="mt-16 grid gap-px overflow-hidden rounded-sm border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
@@ -38,7 +39,8 @@ export function Stats() {
       </dl>
 
       <p className="mt-6 max-w-[60ch] text-xs text-ink-soft">
-        Aggregate figures, twelve-month rolling, across seven partner houses. Individual results vary by category and price point.
+        Aggregate figures, twelve-month rolling, across seven partner houses. Individual results
+        vary by category and price point.
       </p>
     </section>
   );

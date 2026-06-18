@@ -36,7 +36,9 @@ export function Header() {
         </nav>
 
         <div className="hidden md:block">
-          <Link to="/try-on" className="btn-saffron">Try it on</Link>
+          <Link to="/try-on" className="btn-saffron">
+            Try it on
+          </Link>
         </div>
 
         <button
@@ -63,7 +65,11 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
-            <Link to="/try-on" onClick={() => setOpen(false)} className="btn-saffron mt-4 self-start">
+            <Link
+              to="/try-on"
+              onClick={() => setOpen(false)}
+              className="btn-saffron mt-4 self-start"
+            >
               Try it on
             </Link>
           </nav>
