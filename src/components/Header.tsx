@@ -8,7 +8,7 @@ export function Header() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-canvas/85 backdrop-blur-[2px]">
+    <header className="sticky top-0 z-40 border-b border-line bg-canvas">
       <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-5 md:px-10 md:py-6">
         <Link
           to="/"
