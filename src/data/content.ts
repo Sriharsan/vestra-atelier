@@ -134,3 +134,116 @@ export const contact = {
   email: "atelier@vestra.ai",
   address: "12 rue de Sévigné, 75004 Paris — 41 Great Eastern Street, London EC2A 3EY",
 };
+
+export const problem = {
+  eyebrow: "The gap on the rack",
+  title: "Shoppers want to see themselves.\nMost stores still ask them to imagine.",
+  body: "Sixty-four percent of fashion returns happen because the garment didn't look the way the shopper expected. The dressing room closes when the browser opens — and the return label is already in the box.",
+  stats: [
+    { value: "64%", note: "of returns are fit or appearance related" },
+    { value: "£7B", note: "returned fashion in the UK alone, annually" },
+  ],
+};
+
+export const solution = {
+  eyebrow: "What changes",
+  title: "Give the shopper a mirror\nthat works from anywhere.",
+  body: "Vestra brings the fitting room to the product page. One photograph, every garment in the catalogue, rendered on the shopper in seconds. No app, no rig, no guesswork.",
+};
+
+export const integrations = {
+  eyebrow: "Runs where you run",
+  title: "One script tag.\nYour store, your look.",
+  body: "Vestra drops into your existing storefront with a single line of code. No rebuild, no migration, no separate app for the shopper to download.",
+  platforms: [
+    { name: "Shopify", note: "Theme app embed" },
+    { name: "Salesforce Commerce Cloud", note: "Cartridge" },
+    { name: "Magento", note: "Extension" },
+    { name: "Custom storefront", note: "Script tag" },
+  ],
+};
+
+export const pricing = {
+  eyebrow: "Pricing",
+  title: "Per SKU.\nNot per shopper.",
+  body: "Every plan includes unlimited try-ons. You pay for the catalogue you render, not the traffic you receive.",
+  tiers: [
+    {
+      name: "Atelier",
+      audience: "For emerging houses",
+      price: "From £490 / mo",
+      includes: [
+        "Up to 200 SKUs",
+        "Unlimited shopper renders",
+        "Standard cloth rendering",
+        "Email support",
+      ],
+      featured: false,
+    },
+    {
+      name: "Maison",
+      audience: "For established brands",
+      price: "From £1,490 / mo",
+      includes: [
+        "Up to 2,000 SKUs",
+        "Unlimited shopper renders",
+        "Couture-grade cloth rendering",
+        "Merchandiser console",
+        "Priority support",
+      ],
+      featured: true,
+    },
+    {
+      name: "Haute",
+      audience: "For luxury groups",
+      price: "Custom",
+      includes: [
+        "Unlimited SKUs",
+        "Unlimited shopper renders",
+        "Bespoke model tuning",
+        "Dedicated account team",
+        "SLA and data residency",
+      ],
+      featured: false,
+    },
+  ],
+};
+
+export const faq = [
+  {
+    q: "How accurate is the rendering?",
+    a: "Our median photo-real match accuracy is 97%, measured against studio photography of the same garment on the same person. Fabric weight, drape, and colour are all simulated per SKU.",
+  },
+  {
+    q: "Does the shopper need to download an app?",
+    a: "No. Vestra runs entirely in the browser, embedded in your product page. The shopper uploads one photograph and sees the result in seconds.",
+  },
+  {
+    q: "What happens to the shopper's photograph?",
+    a: "Photographs are processed in-session and deleted after rendering. They are never used for model training and never shared with third parties. Retention windows are auditable and configurable per brand.",
+  },
+  {
+    q: "How long does integration take?",
+    a: "Most brands are live within six working days. Shopify and Salesforce Commerce Cloud have pre-built integrations. Custom storefronts use a single script tag.",
+  },
+  {
+    q: "Can I control which garments are available for try-on?",
+    a: "Yes. The merchandiser console lets you enable or disable try-on per SKU, per collection, or per season. You can also retire pieces that fit poorly based on conversion data.",
+  },
+  {
+    q: "What about sizing and fit recommendations?",
+    a: "Vestra shows the shopper how the garment looks, not how it will fit in a specific size. We complement size-recommendation tools rather than replacing them.",
+  },
+];
+
+export const outfitPresets = [
+  {
+    name: "Casual",
+    garmentIds: ["o-bone-trench", "t-sage-knit", "b-saffron-trouser", "s-loafer-cognac"],
+  },
+  {
+    name: "Professional",
+    garmentIds: ["o-espresso-blazer", "t-cream-silk", "b-ink-trouser", "s-loafer-cognac"],
+  },
+  { name: "Night Out", garmentIds: ["t-clay-linen", "a-sage-scarf", "s-heel-nude"] },
+];
