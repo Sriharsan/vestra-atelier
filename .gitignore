@@ -37,3 +37,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.vercel
+
+# Reference / process docs (local only)
+AUDIT.md
+DESIGN-QA.md
+VERIFICATION.md
+PHASE-VERIFICATION.md
+SHIP-REPORT.md
+handoff/
+.lovable/
+bun.lock
+bunfig.toml
