@@ -87,7 +87,7 @@ export function Hero() {
             />
             {/* Side caption like a magazine spread */}
             <div className="absolute left-4 top-4 hidden md:block">
-              <span className="eyebrow text-canvas/90 [text-shadow:0_1px_3px_rgba(0,0,0,0.3)]">
+              <span className="eyebrow text-canvas/90 [text-shadow:0_1px_3px_rgba(33,28,24,0.35)]">
                 Look № 04 · Spring Atelier
               </span>
             </div>
