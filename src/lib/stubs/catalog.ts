@@ -1,4 +1,3 @@
-// BACKEND STUB — in production, fetch from a catalog API or CMS.
 import { garments, lookbook, type Garment } from "@/data/garments";
 
 export async function fetchGarments(): Promise<Garment[]> {

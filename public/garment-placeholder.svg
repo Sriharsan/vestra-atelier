@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 533" fill="none">
+  <rect width="400" height="533" rx="4" fill="#F5F0E6"/>
+  <path d="M170 200h60v6h-60z" fill="#211C18" opacity=".12"/>
+  <path d="M155 230c0-2.2 1.8-4 4-4h82c2.2 0 4 1.8 4 4v100c0 2.2-1.8 4-4 4h-82c-2.2 0-4-1.8-4-4V230z" stroke="#211C18" stroke-width="2" opacity=".10" fill="none"/>
+  <text x="200" y="290" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#211C18" opacity=".25">Garment photo</text>
+</svg>

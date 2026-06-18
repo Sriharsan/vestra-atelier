@@ -1,9 +1,26 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Upload, Check, RotateCcw, Loader2, Download, Share2, ShoppingBag } from "lucide-react";
+import {
+  Upload,
+  Check,
+  RotateCcw,
+  Loader2,
+  Download,
+  Share2,
+  ShoppingBag,
+  AlertCircle,
+  Heart,
+} from "lucide-react";
 import { Eyebrow } from "@/components/Eyebrow";
 import { IridescentBadge } from "@/components/IridescentBadge";
-import { garments, lookbook, type Garment, type GarmentCategory } from "@/data/garments";
+import {
+  garments,
+  lookbook,
+  formatPrice,
+  type Garment,
+  type GarmentCategory,
+} from "@/data/garments";
+import { outfitPresets } from "@/data/content";
 import { runTryOn, type TryOnStage, type TryOnResult } from "@/lib/stubs/tryOn";
 import { track } from "@/lib/stubs/analytics";
 import look1 from "@/assets/look-1.jpg";
@@ -11,22 +28,13 @@ import look2 from "@/assets/look-2.jpg";
 import look3 from "@/assets/look-3.jpg";
 import heroModel from "@/assets/hero-model.jpg";
 
-const OUTFIT_PRESETS = [
-  {
-    name: "Casual",
-    garmentIds: ["o-bone-trench", "t-sage-knit", "b-saffron-trouser", "s-loafer-cognac"],
-  },
-  {
-    name: "Professional",
-    garmentIds: ["o-espresso-blazer", "t-cream-silk", "b-ink-trouser", "s-loafer-cognac"],
-  },
-  { name: "Night Out", garmentIds: ["t-clay-linen", "a-sage-scarf", "s-heel-nude"] },
-];
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 const PRESET_SHOPPERS = [
-  { id: "shopper-a", label: "Shopper A", src: heroModel },
-  { id: "shopper-b", label: "Shopper B", src: look2 },
-  { id: "shopper-c", label: "Shopper C", src: look3 },
+  { id: "shopper-a", label: "Priya", src: heroModel },
+  { id: "shopper-b", label: "Meera", src: look2 },
+  { id: "shopper-c", label: "Ananya", src: look3 },
 ] as const;
 
 const CATEGORY_ORDER: GarmentCategory[] = ["outerwear", "top", "bottom", "shoe", "accessory"];
@@ -38,18 +46,38 @@ const CATEGORY_LABEL: Record<GarmentCategory, string> = {
   accessory: "Accessory",
 };
 
+interface SavedLook {
+  id: string;
+  garmentIds: string[];
+  timestamp: number;
+}
+
+function getSavedLooks(): SavedLook[] {
+  try {
+    return JSON.parse(localStorage.getItem("vestra-saved-looks") ?? "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveLook(look: SavedLook) {
+  const looks = getSavedLooks();
+  if (looks.some((l) => l.id === look.id)) return;
+  looks.unshift(look);
+  localStorage.setItem("vestra-saved-looks", JSON.stringify(looks.slice(0, 20)));
+}
+
 export function TryOnDemo() {
   const reduced = useReducedMotion();
 
-  // Shopper selection
   const [shopperId, setShopperId] = useState<string>(PRESET_SHOPPERS[0].id);
   const [uploadedShopper, setUploadedShopper] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const shopperSrc =
     uploadedShopper ??
     PRESET_SHOPPERS.find((s) => s.id === shopperId)?.src ??
     PRESET_SHOPPERS[0].src;
 
-  // Garment selection (one per category)
   const initialSelection = useMemo(() => {
     const map: Partial<Record<GarmentCategory, string>> = {};
     lookbook[0].pieces.forEach((id) => {
@@ -58,11 +86,14 @@ export function TryOnDemo() {
     });
     return map;
   }, []);
+
   const [selection, setSelection] =
     useState<Partial<Record<GarmentCategory, string>>>(initialSelection);
   const [activePreset, setActivePreset] = useState<string | null>(null);
   const [shareTooltip, setShareTooltip] = useState(false);
+  const [saved, setSaved] = useState(false);
   const garmentListRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedGarments: Garment[] = useMemo(
     () =>
@@ -73,11 +104,10 @@ export function TryOnDemo() {
     [selection],
   );
 
-  // Render lifecycle
   const [stage, setStage] = useState<TryOnStage>({ kind: "idle" });
   const [result, setResult] = useState<TryOnResult | null>(null);
+  const [providerUsed, setProviderUsed] = useState<"fashn" | "fal" | "mock">("mock");
 
-  // Resolve a "rendered" image deterministically from selection — demo only.
   const resolvedSrc = useMemo(() => {
     const ids = Object.values(selection).filter(Boolean) as string[];
     if (ids.includes("o-saffron-coat")) return look1;
@@ -86,7 +116,7 @@ export function TryOnDemo() {
     return shopperSrc;
   }, [selection, shopperSrc]);
 
-  function applyPreset(preset: (typeof OUTFIT_PRESETS)[number]) {
+  function applyPreset(preset: (typeof outfitPresets)[number]) {
     const next: Partial<Record<GarmentCategory, string>> = {};
     for (const gId of preset.garmentIds) {
       const g = garments.find((g) => g.id === gId);
@@ -97,26 +127,21 @@ export function TryOnDemo() {
     track("tryon_preset_applied", { preset: preset.name });
   }
 
-  // Check if current selection matches a preset
   const currentPreset = useMemo(() => {
-    if (activePreset) {
-      const preset = OUTFIT_PRESETS.find((p) => p.name === activePreset);
-      if (preset) {
-        const presetMap: Partial<Record<GarmentCategory, string>> = {};
-        for (const gId of preset.garmentIds) {
-          const g = garments.find((g) => g.id === gId);
-          if (g) presetMap[g.category] = g.id;
-        }
-        const matches = CATEGORY_ORDER.every(
-          (cat) => (presetMap[cat] ?? undefined) === (selection[cat] ?? undefined),
-        );
-        if (matches) return activePreset;
-      }
+    if (!activePreset) return null;
+    const preset = outfitPresets.find((p) => p.name === activePreset);
+    if (!preset) return null;
+    const presetMap: Partial<Record<GarmentCategory, string>> = {};
+    for (const gId of preset.garmentIds) {
+      const g = garments.find((g) => g.id === gId);
+      if (g) presetMap[g.category] = g.id;
     }
-    return null;
+    const matches = CATEGORY_ORDER.every(
+      (cat) => (presetMap[cat] ?? undefined) === (selection[cat] ?? undefined),
+    );
+    return matches ? activePreset : null;
   }, [activePreset, selection]);
 
-  // Alternative garment suggestions (Task 3)
   const alternatives = useMemo(() => {
     if (stage.kind !== "done") return [];
     const alts: { selected: Garment; suggestion: Garment }[] = [];
@@ -124,13 +149,12 @@ export function TryOnDemo() {
       const others = garments.filter((g) => g.category === sg.category && g.id !== sg.id);
       for (const other of others) {
         alts.push({ selected: sg, suggestion: other });
-        if (alts.length >= 3) return alts;
+        if (alts.length >= 4) return alts;
       }
     }
     return alts;
   }, [selectedGarments, stage.kind]);
 
-  // ARIA live text for render progress (Task 6)
   const ariaStageText = useMemo(() => {
     switch (stage.kind) {
       case "idle":
@@ -148,11 +172,19 @@ export function TryOnDemo() {
     }
   }, [stage, result]);
 
-  async function handleRender() {
+  const handleRender = useCallback(async () => {
+    if (selectedGarments.length === 0) return;
+
     track("tryon_render_start", { shopperId, garments: Object.values(selection) });
     setResult(null);
+    setSaved(false);
+    setProviderUsed("mock");
+
     for await (const s of runTryOn(
-      { shopperImage: shopperSrc, garmentIds: Object.values(selection) as string[] },
+      {
+        shopperImage: shopperSrc,
+        garmentIds: Object.values(selection).filter(Boolean) as string[],
+      },
       (_req) => ({
         id: `tr_${Date.now()}`,
         imageUrl: resolvedSrc,
@@ -164,12 +196,12 @@ export function TryOnDemo() {
       setStage(s);
       if (s.kind === "done") {
         setResult(s.result);
+        setProviderUsed("mock");
         track("tryon_render_done", { id: s.result.id });
       }
     }
-  }
+  }, [shopperSrc, selection, resolvedSrc, selectedGarments, shopperId]);
 
-  // Auto-render once on first mount so visitors see the magic immediately
   useEffect(() => {
     handleRender();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -178,67 +210,125 @@ export function TryOnDemo() {
   function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    // BACKEND STUB — in production we upload to object storage; here we use a local object URL.
+
+    setUploadError(null);
+
+    if (!ACCEPTED_TYPES.includes(file.type) && !file.name.toLowerCase().endsWith(".heic")) {
+      setUploadError("Please upload a JPG, PNG, or HEIC image.");
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      setUploadError("Image must be under 10 MB.");
+      return;
+    }
+
     const url = URL.createObjectURL(file);
     setUploadedShopper(url);
+    setShopperId("custom");
     track("tryon_shopper_upload");
+  }
+
+  async function handleShare() {
+    const shareData = {
+      title: "My Vestra Look",
+      text: "Check out this outfit I composed on Vestra!",
+      url: window.location.href,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        track("tryon_share", { method: "native" });
+        return;
+      } catch {
+        // User cancelled or share failed — fall through to clipboard
+      }
+    }
+
+    await navigator.clipboard.writeText(window.location.href);
+    setShareTooltip(true);
+    track("tryon_share", { method: "clipboard" });
+    setTimeout(() => setShareTooltip(false), 1500);
+  }
+
+  function handleSaveLook() {
+    if (!result) return;
+    const ids = Object.values(selection).filter(Boolean) as string[];
+    saveLook({ id: result.id, garmentIds: ids, timestamp: Date.now() });
+    setSaved(true);
+    track("tryon_save_look", { id: result.id });
   }
 
   function reset() {
     setSelection(initialSelection);
     setUploadedShopper(null);
+    setUploadError(null);
     setShopperId(PRESET_SHOPPERS[0].id);
+    setActivePreset(null);
+    setSaved(false);
   }
 
   const isRendering = stage.kind === "uploading" || stage.kind === "rendering";
-  const total = selectedGarments.reduce((s, g) => s + g.priceGBP, 0);
+  const total = selectedGarments.reduce((s, g) => s + g.price, 0);
+  const hasSelection = selectedGarments.length > 0;
+  const isMock = providerUsed === "mock";
 
   return (
     <section className="mx-auto max-w-[1400px] px-6 py-16 md:px-10 md:py-24">
       <div className="grid gap-10 md:grid-cols-12 lg:gap-14">
-        {/* Render canvas — the AI moment */}
+        {/* Render canvas */}
         <div className="md:col-span-7">
           <div className="relative aspect-[3/4] w-full overflow-hidden rounded-sm bg-canvas-raised shadow-fabric-lg">
-            <AnimatePresence mode="wait">
-              <motion.img
-                key={result?.imageUrl ?? shopperSrc}
-                src={result?.imageUrl ?? shopperSrc}
-                alt="Virtual try-on render"
-                className="absolute inset-0 h-full w-full object-cover"
-                initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 1.02 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: reduced ? 0.2 : 0.9, ease: [0.22, 1, 0.36, 1] }}
-                width={1080}
-                height={1440}
-              />
-            </AnimatePresence>
+            {!hasSelection && !result ? (
+              <div className="flex h-full items-center justify-center p-8 text-center">
+                <div>
+                  <p className="font-display text-xl text-ink/60">
+                    Select garments to compose a look
+                  </p>
+                  <p className="mt-2 text-sm text-ink-soft">
+                    Pick pieces from the categories on the right, then hit Render.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <AnimatePresence mode="wait">
+                <motion.img
+                  key={result?.imageUrl ?? shopperSrc}
+                  src={result?.imageUrl ?? shopperSrc}
+                  alt="Virtual try-on render"
+                  className="absolute inset-0 h-full w-full object-cover"
+                  initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 1.02 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: reduced ? 0.2 : 0.9, ease: [0.22, 1, 0.36, 1] }}
+                  width={1080}
+                  height={1440}
+                />
+              </AnimatePresence>
+            )}
 
-            {/* Iridescent shimmer while rendering */}
             {isRendering && (
               <div className="absolute inset-0 iridescent mix-blend-soft-light" aria-hidden />
             )}
 
-            {/* Badge */}
             <div className="absolute left-4 top-4 flex items-center gap-2">
               <IridescentBadge label={isRendering ? "Rendering" : "Rendered by Vestra"} />
-              {!isRendering && result && (
+              {!isRendering && result && isMock && (
                 <span className="rounded-full border border-line bg-canvas/90 px-2.5 py-0.5 text-[10px] font-medium text-ink-soft">
                   Preview
                 </span>
               )}
             </div>
 
-            {/* Status pill and action buttons */}
             <div className="absolute bottom-4 left-4 right-4 flex flex-col items-start gap-2">
               <div className="rounded-full border border-line bg-canvas/95 px-3 py-1.5 text-[11px] text-ink shadow-fabric-sm">
                 {stage.kind === "uploading" && <>Uploading — {stage.progress}%</>}
                 {stage.kind === "rendering" && <>Draping fabric — {stage.progress}%</>}
-                {stage.kind === "done" && (
+                {stage.kind === "done" && result && (
                   <span className="inline-flex items-center gap-1.5">
                     <Check aria-hidden className="h-3 w-3 text-saffron-deep" />
-                    {Math.round((result?.confidence ?? 0) * 100)}% drape confidence ·{" "}
-                    {(result!.durationMs / 1000).toFixed(1)}s
+                    {Math.round((result.confidence ?? 0) * 100)}% drape confidence ·{" "}
+                    {(result.durationMs / 1000).toFixed(1)}s{isMock && " · AI preview"}
                   </span>
                 )}
                 {stage.kind === "idle" && <>Ready</>}
@@ -246,39 +336,46 @@ export function TryOnDemo() {
               </div>
 
               {stage.kind === "done" && result && (
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <a
                     href={result.imageUrl}
                     download="vestra-look.jpg"
-                    className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas/95 px-3 py-1.5 text-[11px] font-medium shadow-fabric-sm transition-colors hover:border-ink"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas/95 px-3 py-1.5 text-[11px] font-medium shadow-fabric-sm transition-colors hover:border-ink focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1"
                   >
                     <Download aria-hidden className="h-3 w-3" />
-                    Save
+                    Save image
                   </a>
+                  <button
+                    type="button"
+                    onClick={handleSaveLook}
+                    disabled={saved}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas/95 px-3 py-1.5 text-[11px] font-medium shadow-fabric-sm transition-colors hover:border-ink focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1 disabled:opacity-60"
+                  >
+                    <Heart
+                      aria-hidden
+                      className={`h-3 w-3 ${saved ? "fill-saffron-deep text-saffron-deep" : ""}`}
+                    />
+                    {saved ? "Saved" : "Save look"}
+                  </button>
                   <div className="relative">
                     <button
                       type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(window.location.href);
-                        setShareTooltip(true);
-                        track("tryon_share");
-                        setTimeout(() => setShareTooltip(false), 1500);
-                      }}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas/95 px-3 py-1.5 text-[11px] font-medium shadow-fabric-sm transition-colors hover:border-ink"
+                      onClick={handleShare}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas/95 px-3 py-1.5 text-[11px] font-medium shadow-fabric-sm transition-colors hover:border-ink focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1"
                     >
                       <Share2 aria-hidden className="h-3 w-3" />
                       Share
                     </button>
                     {shareTooltip && (
                       <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-ink px-2 py-0.5 text-[10px] text-canvas">
-                        Copied
+                        Link copied
                       </span>
                     )}
                   </div>
                   <button
                     type="button"
                     onClick={() => garmentListRef.current?.scrollIntoView({ behavior: "smooth" })}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas/95 px-3 py-1.5 text-[11px] font-medium shadow-fabric-sm transition-colors hover:border-ink"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas/95 px-3 py-1.5 text-[11px] font-medium shadow-fabric-sm transition-colors hover:border-ink focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1"
                   >
                     <ShoppingBag aria-hidden className="h-3 w-3" />
                     Shop the look
@@ -288,12 +385,15 @@ export function TryOnDemo() {
             </div>
           </div>
 
-          <p className="mt-3 max-w-[60ch] text-xs text-ink-soft">
-            <span className="eyebrow mr-2">Note</span>
-            Your photograph stays in your browser and is never uploaded to our servers. In
-            production, shopper images are processed in-session, retained for up to 24 hours for
-            quality assurance, then permanently deleted. Images are never used for model training.
-          </p>
+          <div className="mt-3 space-y-2">
+            <p className="max-w-[60ch] text-xs text-ink-soft">
+              <span className="eyebrow mr-2">Note</span>
+              Results are AI-generated previews. For best results, use a clear, well-lit,
+              front-facing half or full body photo. Your photograph stays in your browser during
+              demo mode. In production, images are processed in-session, retained briefly for
+              quality, then permanently deleted. Never used for training.
+            </p>
+          </div>
         </div>
 
         {/* Controls */}
@@ -315,6 +415,9 @@ export function TryOnDemo() {
           {/* Shopper picker */}
           <div className="mt-8">
             <Eyebrow as="div">Shopper</Eyebrow>
+            <p className="mt-1 text-xs text-ink-soft">
+              Use a clear, front-facing half or full body photo for best results.
+            </p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               {PRESET_SHOPPERS.map((s) => {
                 const active = !uploadedShopper && shopperId === s.id;
@@ -324,40 +427,65 @@ export function TryOnDemo() {
                     type="button"
                     onClick={() => {
                       setUploadedShopper(null);
+                      setUploadError(null);
                       setShopperId(s.id);
                     }}
                     aria-pressed={active}
                     aria-label={`Use ${s.label}`}
-                    className={`relative h-14 w-14 overflow-hidden rounded-full border transition ${
+                    className={`relative h-14 w-14 overflow-hidden rounded-full border transition focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1 ${
                       active
                         ? "border-ink ring-2 ring-saffron ring-offset-2 ring-offset-canvas"
                         : "border-line hover:border-ink"
                     }`}
                   >
                     <img src={s.src} alt="" className="h-full w-full object-cover" />
+                    <span className="absolute inset-x-0 bottom-0 bg-ink/60 px-1 py-0.5 text-[8px] text-canvas text-center">
+                      {s.label}
+                    </span>
                   </button>
                 );
               })}
 
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-canvas-raised px-3 py-2 text-xs text-ink-soft transition hover:border-ink hover:text-ink">
+              {uploadedShopper && (
+                <button
+                  type="button"
+                  aria-pressed
+                  aria-label="Your uploaded photo"
+                  className="relative h-14 w-14 overflow-hidden rounded-full border border-ink ring-2 ring-saffron ring-offset-2 ring-offset-canvas transition"
+                >
+                  <img src={uploadedShopper} alt="" className="h-full w-full object-cover" />
+                  <span className="absolute inset-x-0 bottom-0 bg-ink/60 px-1 py-0.5 text-[8px] text-canvas text-center">
+                    You
+                  </span>
+                </button>
+              )}
+
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-canvas-raised px-3 py-2 text-xs text-ink-soft transition hover:border-ink hover:text-ink focus-within:ring-2 focus-within:ring-saffron focus-within:ring-offset-1">
                 <Upload aria-hidden className="h-3.5 w-3.5" />
                 Upload photo
                 <input
+                  ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
                   className="sr-only"
                   onChange={onUpload}
                   aria-label="Upload a shopper photograph"
                 />
               </label>
             </div>
+            {uploadError && (
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-clay" role="alert">
+                <AlertCircle aria-hidden className="h-3.5 w-3.5 shrink-0" />
+                {uploadError}
+              </p>
+            )}
           </div>
 
-          {/* Quick looks — outfit presets */}
+          {/* Quick looks */}
           <div className="mt-8">
             <Eyebrow as="div">Quick looks</Eyebrow>
             <div className="mt-3 flex flex-wrap gap-2">
-              {OUTFIT_PRESETS.map((preset) => {
+              {outfitPresets.map((preset) => {
                 const active = currentPreset === preset.name;
                 return (
                   <button
@@ -365,7 +493,7 @@ export function TryOnDemo() {
                     type="button"
                     onClick={() => applyPreset(preset)}
                     aria-pressed={active}
-                    className={`rounded-full border px-4 py-2 text-sm transition ${
+                    className={`rounded-full border px-4 py-2 text-sm transition focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1 ${
                       active
                         ? "border-ink bg-ink text-canvas"
                         : "border-line bg-canvas text-ink-soft hover:border-ink hover:text-ink"
@@ -378,7 +506,7 @@ export function TryOnDemo() {
             </div>
           </div>
 
-          {/* Garment picker per category */}
+          {/* Garment picker */}
           <div ref={garmentListRef} className="mt-8 space-y-5">
             {CATEGORY_ORDER.map((cat) => {
               const opts = garments.filter((g) => g.category === cat);
@@ -394,8 +522,9 @@ export function TryOnDemo() {
                           const next = { ...selection };
                           delete next[cat];
                           setSelection(next);
+                          setActivePreset(null);
                         }}
-                        className="text-[11px] text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+                        className="text-[11px] text-ink-soft underline-offset-2 hover:text-ink hover:underline focus:outline-none focus:underline"
                       >
                         Remove
                       </button>
@@ -409,11 +538,18 @@ export function TryOnDemo() {
                           key={g.id}
                           type="button"
                           onClick={() => {
-                            setSelection({ ...selection, [cat]: g.id });
+                            if (active) {
+                              const next = { ...selection };
+                              delete next[cat];
+                              setSelection(next);
+                            } else {
+                              setSelection({ ...selection, [cat]: g.id });
+                            }
                             setActivePreset(null);
                           }}
                           aria-pressed={active}
-                          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition ${
+                          title={`${g.name} — ${g.brand} — ${formatPrice(g.price)}`}
+                          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1 ${
                             active
                               ? "border-ink bg-ink text-canvas"
                               : "border-line bg-canvas text-ink-soft hover:border-ink hover:text-ink"
@@ -434,7 +570,7 @@ export function TryOnDemo() {
             })}
           </div>
 
-          {/* Outfit variation suggestions */}
+          {/* Try instead suggestions */}
           {alternatives.length > 0 && (
             <div className="mt-6">
               <Eyebrow as="div">Try instead</Eyebrow>
@@ -447,7 +583,7 @@ export function TryOnDemo() {
                       setSelection({ ...selection, [suggestion.category]: suggestion.id });
                       setActivePreset(null);
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas px-3 py-1.5 text-[11px] text-ink-soft transition hover:border-ink hover:text-ink"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas px-3 py-1.5 text-[11px] text-ink-soft transition hover:border-ink hover:text-ink focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1"
                   >
                     <span
                       aria-hidden
@@ -461,7 +597,7 @@ export function TryOnDemo() {
             </div>
           )}
 
-          {/* ARIA live region for render progress */}
+          {/* ARIA live region */}
           <div aria-live="polite" className="sr-only">
             {ariaStageText}
           </div>
@@ -471,8 +607,8 @@ export function TryOnDemo() {
             <button
               type="button"
               onClick={handleRender}
-              disabled={isRendering}
-              className="btn-saffron"
+              disabled={isRendering || !hasSelection}
+              className="btn-saffron disabled:opacity-50"
             >
               {isRendering ? (
                 <>
@@ -480,17 +616,19 @@ export function TryOnDemo() {
                   Draping…
                 </>
               ) : (
-                <>Render the look</>
+                <>See it on me</>
               )}
             </button>
             <button type="button" onClick={reset} className="btn-ghost">
               <RotateCcw aria-hidden className="h-4 w-4" />
               Reset
             </button>
-            <div className="ml-auto text-right">
-              <div className="eyebrow">Outfit total</div>
-              <div className="font-display text-2xl text-ink">£{total.toLocaleString()}</div>
-            </div>
+            {hasSelection && (
+              <div className="ml-auto text-right">
+                <div className="eyebrow">Outfit total</div>
+                <div className="font-display text-2xl text-ink">{formatPrice(total)}</div>
+              </div>
+            )}
           </div>
         </div>
       </div>
