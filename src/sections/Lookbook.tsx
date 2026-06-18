@@ -25,7 +25,8 @@ export function Lookbook() {
           </div>
           <div className="md:col-span-5">
             <p className="text-ink-soft md:max-w-[34ch] md:text-right md:ml-auto">
-              Three looks from current partner houses, each composed in seconds from individual SKUs.
+              Three looks from current partner houses, each composed in seconds from individual
+              SKUs.
             </p>
           </div>
         </div>
@@ -49,16 +50,19 @@ export function Lookbook() {
                 </div>
                 <figcaption className="mt-5 flex items-start justify-between gap-6">
                   <div>
-                    <h3 className="font-display text-2xl text-ink" style={{ letterSpacing: "-0.01em" }}>
+                    <h3
+                      className="font-display text-2xl text-ink"
+                      style={{ letterSpacing: "-0.01em" }}
+                    >
                       {look.title}
                     </h3>
                     <p className="mt-1 text-sm text-ink-soft">{look.house}</p>
                   </div>
-                  <span className="eyebrow mt-2 shrink-0">
-                    № {String(i + 1).padStart(2, "0")}
-                  </span>
+                  <span className="eyebrow mt-2 shrink-0">№ {String(i + 1).padStart(2, "0")}</span>
                 </figcaption>
-                <p className="mt-3 max-w-[36ch] text-xs leading-relaxed text-ink-soft">{look.caption}</p>
+                <p className="mt-3 max-w-[36ch] text-xs leading-relaxed text-ink-soft">
+                  {look.caption}
+                </p>
                 <ul className="mt-3 flex flex-wrap gap-2">
                   {look.pieces.map((id) => {
                     const g = garments.find((g) => g.id === id);

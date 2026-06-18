@@ -39,7 +39,10 @@ export function HowItWorks() {
                   {step.n}
                 </span>
                 <div>
-                  <h3 className="font-display text-2xl text-ink md:text-3xl" style={{ letterSpacing: "-0.01em" }}>
+                  <h3
+                    className="font-display text-2xl text-ink md:text-3xl"
+                    style={{ letterSpacing: "-0.01em" }}
+                  >
                     {step.title}
                   </h3>
                   <p className="mt-3 max-w-[52ch] text-ink-soft">{step.body}</p>

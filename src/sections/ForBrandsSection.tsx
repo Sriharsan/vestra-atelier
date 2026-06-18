@@ -42,14 +42,19 @@ export function ForBrandsSection() {
             </h2>
 
             <p className="mt-6 max-w-[52ch] text-ink-soft md:text-lg md:leading-[1.7]">
-              Ecommerce leads use Vestra to lift conversion. Merchandisers use it to retire pieces that don't flatter. Founders use it because the returns ledger finally moves in the right direction.
+              Ecommerce leads use Vestra to lift conversion. Merchandisers use it to retire pieces
+              that don't flatter. Founders use it because the returns ledger finally moves in the
+              right direction.
             </p>
 
             <ul className="mt-10 grid gap-y-8 sm:grid-cols-2 sm:gap-x-10">
               {features.map((f, i) => (
                 <Reveal key={f.title} delay={i * 0.05}>
                   <li className="border-t border-line pt-5">
-                    <h3 className="font-display text-xl text-ink" style={{ letterSpacing: "-0.01em" }}>
+                    <h3
+                      className="font-display text-xl text-ink"
+                      style={{ letterSpacing: "-0.01em" }}
+                    >
                       {f.title}
                     </h3>
                     <p className="mt-2 text-sm leading-relaxed text-ink-soft">{f.body}</p>
@@ -65,7 +70,11 @@ export function ForBrandsSection() {
           <Eyebrow>Houses in the atelier</Eyebrow>
           <ul className="mt-6 flex flex-wrap items-baseline gap-x-10 gap-y-4">
             {brandsUsing.map((b) => (
-              <li key={b} className="font-display text-xl text-ink md:text-2xl" style={{ letterSpacing: "0.04em" }}>
+              <li
+                key={b}
+                className="font-display text-xl text-ink md:text-2xl"
+                style={{ letterSpacing: "0.04em" }}
+              >
                 {b}
               </li>
             ))}
@@ -75,7 +84,9 @@ export function ForBrandsSection() {
         {/* Editorial pull quote */}
         <Reveal>
           <figure className="mt-24 grid items-start gap-8 border-t border-line pt-12 md:grid-cols-12">
-            <Eyebrow as="div" className="md:col-span-3">From the floor</Eyebrow>
+            <Eyebrow as="div" className="md:col-span-3">
+              From the floor
+            </Eyebrow>
             <div className="md:col-span-9">
               <blockquote
                 className="font-display text-ink"
@@ -85,9 +96,13 @@ export function ForBrandsSection() {
                   letterSpacing: "-0.01em",
                 }}
               >
-                <span aria-hidden className="text-saffron-deep">"</span>
+                <span aria-hidden className="text-saffron-deep">
+                  "
+                </span>
                 {testimonial.quote}
-                <span aria-hidden className="text-saffron-deep">"</span>
+                <span aria-hidden className="text-saffron-deep">
+                  "
+                </span>
               </blockquote>
               <figcaption className="mt-6 text-sm text-ink-soft">
                 — {testimonial.author}, <em>{testimonial.role}</em>
