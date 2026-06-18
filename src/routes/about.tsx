@@ -21,6 +21,7 @@ export const Route = createFileRoute("/about")({
         content: "Built by people who have run the dressing room.",
       },
     ],
+    links: [{ rel: "canonical", href: "https://vestra.ai/about" }],
   }),
   component: AboutPage,
 });
@@ -88,7 +89,9 @@ function AboutPage() {
                     >
                       {s.title}
                     </h2>
-                    <p className="mt-5 max-w-[58ch] text-ink-soft md:text-lg md:leading-[1.7]">{s.body}</p>
+                    <p className="mt-5 max-w-[58ch] text-ink-soft md:text-lg md:leading-[1.7]">
+                      {s.body}
+                    </p>
                   </div>
                 </article>
               </Reveal>

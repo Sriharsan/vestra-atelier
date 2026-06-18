@@ -11,6 +11,9 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { CookieConsent } from "../components/CookieConsent";
+import { FloatingCTA } from "@/components/FloatingCTA";
+import { OrganizationSchema, WebSiteSchema } from "../components/StructuredData";
 
 function NotFoundComponent() {
   return (
@@ -24,7 +27,9 @@ function NotFoundComponent() {
           The page you're looking for isn't on the floor today.
         </p>
         <div className="mt-8">
-          <Link to="/" className="btn-primary">Return to the atelier</Link>
+          <Link to="/" className="btn-primary">
+            Return to the atelier
+          </Link>
         </div>
       </div>
     </div>
@@ -32,7 +37,6 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  // eslint-disable-next-line no-console
   console.error(error);
   const router = useRouter();
   useEffect(() => {
@@ -47,12 +51,17 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <p className="mt-2 text-sm text-ink-soft">A loose thread on our end.</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
-            onClick={() => { router.invalidate(); reset(); }}
+            onClick={() => {
+              router.invalidate();
+              reset();
+            }}
             className="btn-primary"
           >
             Try again
           </button>
-          <Link to="/" className="btn-ghost">Go home</Link>
+          <Link to="/" className="btn-ghost">
+            Go home
+          </Link>
         </div>
       </div>
     </div>
@@ -83,6 +92,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:site", content: "@vestra" },
     ],
     links: [
+      { rel: "manifest", href: "/manifest.json" },
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
@@ -117,6 +127,8 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <OrganizationSchema />
+      <WebSiteSchema />
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-ink focus:px-4 focus:py-2 focus:text-sm focus:text-canvas"
@@ -124,6 +136,8 @@ function RootComponent() {
         Skip to content
       </a>
       <Outlet />
+      <FloatingCTA />
+      <CookieConsent />
     </QueryClientProvider>
   );
 }

@@ -19,6 +19,7 @@ export const Route = createFileRoute("/contact")({
       { property: "og:title", content: "Contact — Vestra" },
       { property: "og:description", content: "Begin the conversation with the Vestra atelier." },
     ],
+    links: [{ rel: "canonical", href: "https://vestra.ai/contact" }],
   }),
   component: ContactPage,
 });
@@ -54,13 +55,17 @@ function ContactPage() {
               {contact.title.split(" ").slice(0, -1).join(" ")}{" "}
               <span className="italic text-saffron-deep">{contact.title.split(" ").slice(-1)}</span>
             </h1>
-            <p className="mt-6 max-w-[40ch] text-ink-soft md:text-lg md:leading-[1.7]">{contact.body}</p>
+            <p className="mt-6 max-w-[40ch] text-ink-soft md:text-lg md:leading-[1.7]">
+              {contact.body}
+            </p>
 
             <dl className="mt-10 space-y-6 border-t border-line pt-8">
               <div>
                 <dt className="eyebrow">Atelier</dt>
                 <dd className="mt-2 text-ink">
-                  <a href={`mailto:${contact.email}`} className="link-underline">{contact.email}</a>
+                  <a href={`mailto:${contact.email}`} className="link-underline">
+                    {contact.email}
+                  </a>
                 </dd>
               </div>
               <div>
@@ -88,11 +93,19 @@ function ContactPage() {
                 <div className="grid gap-6 md:grid-cols-2">
                   <Field id="name" label="Your name" required />
                   <Field id="house" label="Your house" placeholder="Maison Aurelle" required />
-                  <Field id="email" label="Work email" type="email" required className="md:col-span-2" />
+                  <Field
+                    id="email"
+                    label="Work email"
+                    type="email"
+                    required
+                    className="md:col-span-2"
+                  />
                   <Field id="role" label="Role" placeholder="Head of Ecommerce" />
                   <Field id="catalogue" label="Catalogue size" placeholder="≈ 400 SKUs" />
                   <div className="md:col-span-2">
-                    <label htmlFor="message" className="eyebrow block">A short note</label>
+                    <label htmlFor="message" className="eyebrow block">
+                      A short note
+                    </label>
                     <textarea
                       id="message"
                       name="message"
@@ -143,7 +156,12 @@ function Field({
   return (
     <div className={className}>
       <label htmlFor={id} className="eyebrow block">
-        {label} {required && <span aria-hidden className="text-saffron-deep">·</span>}
+        {label}{" "}
+        {required && (
+          <span aria-hidden className="text-saffron-deep">
+            ·
+          </span>
+        )}
       </label>
       <input
         id={id}

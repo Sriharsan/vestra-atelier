@@ -19,6 +19,7 @@ export const Route = createFileRoute("/try-on")({
         content: "A live demo of couture-grade virtual try-on.",
       },
     ],
+    links: [{ rel: "canonical", href: "https://vestra.ai/try-on" }],
   }),
   component: TryOnPage,
 });
@@ -43,7 +44,8 @@ function TryOnPage() {
             <span className="italic text-saffron-deep">See it on you.</span>
           </h1>
           <p className="mt-6 max-w-[58ch] text-ink-soft md:text-lg md:leading-[1.7]">
-            Pick a preset shopper or upload a photograph, then assemble an outfit piece by piece. The render appears in seconds — the shimmer marks the AI moment.
+            Pick a preset shopper or upload a photograph, then assemble an outfit piece by piece.
+            The render appears in seconds — the shimmer marks the AI moment.
           </p>
         </div>
         <TryOnDemo />
