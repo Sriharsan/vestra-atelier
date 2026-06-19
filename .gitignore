@@ -38,6 +38,7 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+.claude/
 
 # Reference / process docs (local only)
 AUDIT.md
