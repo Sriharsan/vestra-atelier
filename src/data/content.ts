@@ -19,6 +19,7 @@ export const brand = {
 
 export const nav = [
   { label: "Atelier", to: "/" },
+  { label: "Shop", to: "/shop" },
   { label: "Try On", to: "/try-on" },
   { label: "For Brands", to: "/for-brands" },
   { label: "House", to: "/about" },
@@ -178,7 +179,7 @@ export const pricing = {
     {
       name: "Atelier",
       audience: "For emerging houses",
-      price: "From ₹39,900 / mo",
+      price: "From ₹14,999 / mo",
       includes: [
         "Up to 200 SKUs",
         "Unlimited shopper renders",
@@ -190,7 +191,7 @@ export const pricing = {
     {
       name: "Maison",
       audience: "For established brands",
-      price: "From ₹1,19,900 / mo",
+      price: "From ₹49,999 / mo",
       includes: [
         "Up to 2,000 SKUs",
         "Unlimited shopper renders",

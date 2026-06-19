@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TryOnRouteImport } from './routes/try-on'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ShopRouteImport } from './routes/shop'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ForBrandsRouteImport } from './routes/for-brands'
 import { Route as ContactRouteImport } from './routes/contact'
@@ -25,6 +26,11 @@ const TryOnRoute = TryOnRouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShopRoute = ShopRouteImport.update({
+  id: '/shop',
+  path: '/shop',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/for-brands': typeof ForBrandsRoute
   '/privacy': typeof PrivacyRoute
+  '/shop': typeof ShopRoute
   '/terms': typeof TermsRoute
   '/try-on': typeof TryOnRoute
 }
@@ -68,6 +75,7 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/for-brands': typeof ForBrandsRoute
   '/privacy': typeof PrivacyRoute
+  '/shop': typeof ShopRoute
   '/terms': typeof TermsRoute
   '/try-on': typeof TryOnRoute
 }
@@ -78,6 +86,7 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/for-brands': typeof ForBrandsRoute
   '/privacy': typeof PrivacyRoute
+  '/shop': typeof ShopRoute
   '/terms': typeof TermsRoute
   '/try-on': typeof TryOnRoute
 }
@@ -89,6 +98,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/for-brands'
     | '/privacy'
+    | '/shop'
     | '/terms'
     | '/try-on'
   fileRoutesByTo: FileRoutesByTo
@@ -98,6 +108,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/for-brands'
     | '/privacy'
+    | '/shop'
     | '/terms'
     | '/try-on'
   id:
@@ -107,6 +118,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/for-brands'
     | '/privacy'
+    | '/shop'
     | '/terms'
     | '/try-on'
   fileRoutesById: FileRoutesById
@@ -117,6 +129,7 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   ForBrandsRoute: typeof ForBrandsRoute
   PrivacyRoute: typeof PrivacyRoute
+  ShopRoute: typeof ShopRoute
   TermsRoute: typeof TermsRoute
   TryOnRoute: typeof TryOnRoute
 }
@@ -135,6 +148,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shop': {
+      id: '/shop'
+      path: '/shop'
+      fullPath: '/shop'
+      preLoaderRoute: typeof ShopRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -181,6 +201,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   ForBrandsRoute: ForBrandsRoute,
   PrivacyRoute: PrivacyRoute,
+  ShopRoute: ShopRoute,
   TermsRoute: TermsRoute,
   TryOnRoute: TryOnRoute,
 }
