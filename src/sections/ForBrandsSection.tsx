@@ -6,7 +6,7 @@ import { Reveal } from "@/components/Reveal";
 export function ForBrandsSection() {
   return (
     <section className="bg-canvas-raised">
-      <div className="mx-auto max-w-[1400px] px-6 py-24 md:px-10 md:py-36">
+      <div className="mx-auto max-w-[1400px] px-6 py-20 md:px-10 md:py-28">
         {/* Editorial split */}
         <div className="grid gap-12 md:grid-cols-12 md:gap-16">
           <div className="md:col-span-5">
