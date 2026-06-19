@@ -31,10 +31,13 @@ import heroModel from "@/assets/hero-model.jpg";
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
+// Images are placeholders — replace with rights-cleared, diverse on-model photos.
+// heroModel: South Asian woman · look1: South Asian woman (saffron look)
+// look2: East Asian woman · look3: European man
 const PRESET_SHOPPERS = [
-  { id: "shopper-a", label: "Priya", src: heroModel },
-  { id: "shopper-b", label: "Meera", src: look2 },
-  { id: "shopper-c", label: "Ananya", src: look3 },
+  { id: "shopper-a", label: "Priya", gender: "women" as const, src: heroModel },
+  { id: "shopper-b", label: "Mei", gender: "women" as const, src: look2 },
+  { id: "shopper-c", label: "Arjun", gender: "men" as const, src: look3 },
 ] as const;
 
 const CATEGORY_ORDER: GarmentCategory[] = ["outerwear", "top", "bottom", "shoe", "accessory"];
@@ -107,6 +110,8 @@ export function TryOnDemo() {
   const [stage, setStage] = useState<TryOnStage>({ kind: "idle" });
   const [result, setResult] = useState<TryOnResult | null>(null);
   const [providerUsed, setProviderUsed] = useState<"fashn" | "fal" | "mock">("mock");
+  const [editInstruction, setEditInstruction] = useState("");
+  const [tryOnMode, setTryOnMode] = useState<"tryon" | "edit">("tryon");
 
   const resolvedSrc = useMemo(() => {
     const ids = Object.values(selection).filter(Boolean) as string[];
@@ -393,6 +398,12 @@ export function TryOnDemo() {
               demo mode. In production, images are processed in-session, retained briefly for
               quality, then permanently deleted. Never used for training.
             </p>
+            {isMock && (
+              <p className="max-w-[60ch] text-xs text-ink-soft/70">
+                Running in preview mode — real rendering requires a configured provider key (FASHN
+                or fal.ai).
+              </p>
+            )}
           </div>
         </div>
 
@@ -597,6 +608,58 @@ export function TryOnDemo() {
             </div>
           )}
 
+          {/* Recolor / edit mode */}
+          <div className="mt-8">
+            <Eyebrow as="div">Restyle</Eyebrow>
+            <p className="mt-1 text-xs text-ink-soft">
+              Describe a change — recolor, swap fabric, adjust styling — and the AI will apply it
+              while keeping your pose and identity.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {[
+                "Change the blazer to mustard yellow",
+                "Make the kurta cobalt blue",
+                "Switch to a floral print",
+                "Add a red silk dupatta",
+              ].map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => {
+                    setEditInstruction(suggestion);
+                    setTryOnMode("edit");
+                  }}
+                  className="rounded-full border border-line px-3 py-1.5 text-[11px] text-ink-soft transition hover:border-ink hover:text-ink"
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={editInstruction}
+              onChange={(e) => {
+                setEditInstruction(e.target.value);
+                setTryOnMode(e.target.value ? "edit" : "tryon");
+              }}
+              placeholder="e.g. change the tie to cobalt blue, keep everything else"
+              rows={2}
+              maxLength={500}
+              className="mt-3 w-full resize-none rounded-sm border border-line bg-canvas px-3 py-2 text-sm text-ink placeholder:text-ink-soft/60 focus:border-ink focus:outline-none"
+            />
+            {editInstruction && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditInstruction("");
+                  setTryOnMode("tryon");
+                }}
+                className="mt-1 text-[11px] text-ink-soft underline-offset-2 hover:underline"
+              >
+                Clear instruction (use garment swap instead)
+              </button>
+            )}
+          </div>
+
           {/* ARIA live region */}
           <div aria-live="polite" className="sr-only">
             {ariaStageText}
@@ -607,7 +670,7 @@ export function TryOnDemo() {
             <button
               type="button"
               onClick={handleRender}
-              disabled={isRendering || !hasSelection}
+              disabled={isRendering || (!hasSelection && !editInstruction)}
               className="btn-saffron disabled:opacity-50"
             >
               {isRendering ? (
@@ -615,6 +678,8 @@ export function TryOnDemo() {
                   <Loader2 aria-hidden className="h-4 w-4 animate-spin" />
                   Draping…
                 </>
+              ) : tryOnMode === "edit" ? (
+                <>Restyle it</>
               ) : (
                 <>See it on me</>
               )}

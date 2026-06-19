@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { contactFormSchema, tryOnRequestSchema } from "./validation";
+import {
+  contactFormSchema,
+  tryOnRequestSchema,
+  demoRequestSchema,
+  subscribeSchema,
+} from "./validation";
 
 describe("contactFormSchema", () => {
   it("accepts a valid payload", () => {
@@ -55,10 +60,20 @@ describe("contactFormSchema", () => {
 });
 
 describe("tryOnRequestSchema", () => {
-  it("accepts valid shopper + garment images", () => {
+  it("accepts valid shopper + garment images (tryon mode)", () => {
     const result = tryOnRequestSchema.safeParse({
       shopperImage: "data:image/jpeg;base64,abc123",
       garmentImage: "https://example.com/garment.jpg",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.mode).toBe("tryon");
+  });
+
+  it("accepts edit mode with instruction", () => {
+    const result = tryOnRequestSchema.safeParse({
+      shopperImage: "data:image/jpeg;base64,abc123",
+      mode: "edit",
+      instruction: "Change the blazer to mustard yellow",
     });
     expect(result.success).toBe(true);
   });
@@ -80,11 +95,13 @@ describe("tryOnRequestSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects missing garment image", () => {
+  it("accepts missing garment image (optional now for edit mode)", () => {
     const result = tryOnRequestSchema.safeParse({
       shopperImage: "data:image/jpeg;base64,abc123",
+      mode: "edit",
+      instruction: "Make the shirt blue",
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it("rejects empty string as shopper image", () => {
@@ -110,6 +127,34 @@ describe("tryOnRequestSchema", () => {
       garmentImage: "https://example.com/garment.jpg",
       category: "invalid",
     });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("demoRequestSchema", () => {
+  it("accepts a valid demo request", () => {
+    const result = demoRequestSchema.safeParse({
+      name: "Arjun Mehta",
+      email: "arjun@example.com",
+      house: "Maison Nord",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects missing email", () => {
+    const result = demoRequestSchema.safeParse({ name: "Test" });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("subscribeSchema", () => {
+  it("accepts a valid email", () => {
+    const result = subscribeSchema.safeParse({ email: "test@example.com" });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects invalid email", () => {
+    const result = subscribeSchema.safeParse({ email: "not-email" });
     expect(result.success).toBe(false);
   });
 });

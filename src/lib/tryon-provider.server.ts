@@ -8,6 +8,7 @@ export interface TryOnProviderResult {
 }
 
 type FashnCategory = "tops" | "bottoms" | "one-pieces" | "auto";
+type TryOnMode = "tryon" | "edit";
 
 function resolveProvider(): "fashn" | "fal" | "none" {
   const v = (process.env.TRYON_PROVIDER ?? "none").toLowerCase();
@@ -17,14 +18,31 @@ function resolveProvider(): "fashn" | "fal" | "none" {
 
 async function runFashn(
   personImage: string,
-  garmentImage: string,
+  garmentImage: string | undefined,
   category: FashnCategory,
+  mode: TryOnMode,
+  instruction?: string,
 ): Promise<TryOnProviderResult> {
   const apiKey = process.env.FASHN_API_KEY;
   if (!apiKey) throw new Error("FASHN_API_KEY not set");
 
   const baseUrl = process.env.FASHN_BASE_URL ?? "https://api.fashn.ai";
   const start = Date.now();
+
+  const inputs: Record<string, unknown> = {
+    model_image: personImage,
+    category,
+    mode: "balanced",
+    garment_photo_type: "auto",
+    segmentation_free: true,
+    num_samples: 1,
+  };
+
+  if (mode === "edit" && instruction) {
+    inputs.instruction = instruction;
+  } else if (garmentImage) {
+    inputs.garment_image = garmentImage;
+  }
 
   const runRes = await fetch(`${baseUrl}/v1/run`, {
     method: "POST",
@@ -34,15 +52,7 @@ async function runFashn(
     },
     body: JSON.stringify({
       model_name: "tryon-v1.6",
-      inputs: {
-        model_image: personImage,
-        garment_image: garmentImage,
-        category,
-        mode: "balanced",
-        garment_photo_type: "auto",
-        segmentation_free: true,
-        num_samples: 1,
-      },
+      inputs,
     }),
   });
 
@@ -96,13 +106,30 @@ async function runFashn(
 
 async function runFal(
   personImage: string,
-  garmentImage: string,
+  garmentImage: string | undefined,
   category: FashnCategory,
+  mode: TryOnMode,
+  instruction?: string,
 ): Promise<TryOnProviderResult> {
   const apiKey = process.env.FAL_KEY;
   if (!apiKey) throw new Error("FAL_KEY not set");
 
   const start = Date.now();
+
+  const body: Record<string, unknown> = {
+    model_image: personImage,
+    category,
+    mode: "balanced",
+    garment_photo_type: "auto",
+    segmentation_free: true,
+    num_samples: 1,
+  };
+
+  if (mode === "edit" && instruction) {
+    body.instruction = instruction;
+  } else if (garmentImage) {
+    body.garment_image = garmentImage;
+  }
 
   const submitRes = await fetch("https://queue.fal.run/fal-ai/fashn/tryon/v1.5", {
     method: "POST",
@@ -110,20 +137,12 @@ async function runFal(
       Authorization: `Key ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model_image: personImage,
-      garment_image: garmentImage,
-      category,
-      mode: "balanced",
-      garment_photo_type: "auto",
-      segmentation_free: true,
-      num_samples: 1,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!submitRes.ok) {
-    const body = await submitRes.text();
-    throw new Error(`fal submit failed (${submitRes.status}): ${body}`);
+    const errBody = await submitRes.text();
+    throw new Error(`fal submit failed (${submitRes.status}): ${errBody}`);
   }
 
   const { request_id, status: initStatus } = (await submitRes.json()) as {
@@ -191,13 +210,15 @@ async function runMock(): Promise<TryOnProviderResult> {
 
 export async function generateTryOn(
   personImage: string,
-  garmentImage: string,
+  garmentImage: string | undefined,
   category: FashnCategory = "auto",
+  mode: TryOnMode = "tryon",
+  instruction?: string,
 ): Promise<TryOnProviderResult> {
   const provider = resolveProvider();
 
-  if (provider === "fashn") return runFashn(personImage, garmentImage, category);
-  if (provider === "fal") return runFal(personImage, garmentImage, category);
+  if (provider === "fashn") return runFashn(personImage, garmentImage, category, mode, instruction);
+  if (provider === "fal") return runFal(personImage, garmentImage, category, mode, instruction);
   return runMock();
 }
 
