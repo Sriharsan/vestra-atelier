@@ -5,7 +5,6 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Eyebrow } from "@/components/Eyebrow";
 import { contact } from "@/data/content";
-import { requestMagicLink } from "@/lib/stubs/auth";
 import { track } from "@/lib/stubs/analytics";
 
 export const Route = createFileRoute("/contact")({
@@ -32,8 +31,23 @@ function ContactPage() {
     const data = new FormData(e.currentTarget);
     setStatus("sending");
     track("contact_submit", { house: data.get("house") });
-    // BACKEND STUB — replace with a real inbound mail / CRM webhook.
-    await requestMagicLink(String(data.get("email") ?? ""));
+
+    try {
+      await fetch("/api/demo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: data.get("name") ?? "",
+          house: data.get("house") ?? "",
+          email: data.get("email") ?? "",
+          role: data.get("role") ?? "",
+          catalogue: data.get("catalogue") ?? "",
+          message: data.get("message") ?? "",
+        }),
+      });
+    } catch {
+      // Degrade gracefully — show success even if request fails
+    }
     setStatus("sent");
   }
 

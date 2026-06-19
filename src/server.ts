@@ -3,9 +3,10 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { applySecurityHeaders } from "./lib/security-headers";
-import { tryOnRequestSchema } from "./lib/validation";
+import { tryOnRequestSchema, demoRequestSchema, subscribeSchema } from "./lib/validation";
 import { checkRateLimit } from "./lib/rate-limit";
 import { generateTryOn, getProviderName } from "./lib/tryon-provider.server";
+import { insertDocument, findByEmail } from "./lib/db.server";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -52,7 +53,7 @@ function clientIp(request: Request): string {
   return "unknown";
 }
 
-const MAX_BODY_BYTES = 12 * 1024 * 1024; // 12 MB (base64 images are large)
+const MAX_BODY_BYTES = 12 * 1024 * 1024;
 const SESSION_GEN_CAP = 20;
 const sessionGenerations = new Map<string, number>();
 
@@ -98,17 +99,15 @@ async function handleTryOn(request: Request): Promise<Response> {
     return jsonResponse({ error: "Validation failed", issues: parsed.error.issues }, 400);
   }
 
-  const { shopperImage, garmentImage, category } = parsed.data as {
-    shopperImage: string;
-    garmentImage: string;
-    category?: string;
-  };
+  const { shopperImage, garmentImage, category, mode, instruction } = parsed.data;
 
   try {
     const result = await generateTryOn(
       shopperImage,
       garmentImage,
       (category as "tops" | "bottoms" | "one-pieces" | "auto") ?? "auto",
+      mode,
+      instruction,
     );
 
     sessionGenerations.set(ip, genCount + 1);
@@ -134,6 +133,79 @@ async function handleTryOn(request: Request): Promise<Response> {
   }
 }
 
+async function handleDemo(request: Request): Promise<Response> {
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed" }, 405);
+  }
+
+  const ip = clientIp(request);
+  const rateCheck = checkRateLimit(`demo:${ip}`, 5, 60_000);
+  if (!rateCheck.allowed) {
+    return jsonResponse({ error: "Rate limit exceeded" }, 429);
+  }
+
+  let rawBody: unknown;
+  try {
+    rawBody = await request.json();
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body" }, 400);
+  }
+
+  const parsed = demoRequestSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return jsonResponse({ error: "Validation failed", issues: parsed.error.issues }, 400);
+  }
+
+  const { persisted } = await insertDocument("demo_requests", parsed.data);
+
+  return jsonResponse({
+    success: true,
+    persisted,
+    ...(!persisted && {
+      note: "Submission accepted but persistence is unavailable. For production, set MONGODB_URI to a hosted database (MongoDB Atlas).",
+    }),
+  });
+}
+
+async function handleSubscribe(request: Request): Promise<Response> {
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed" }, 405);
+  }
+
+  const ip = clientIp(request);
+  const rateCheck = checkRateLimit(`sub:${ip}`, 5, 60_000);
+  if (!rateCheck.allowed) {
+    return jsonResponse({ error: "Rate limit exceeded" }, 429);
+  }
+
+  let rawBody: unknown;
+  try {
+    rawBody = await request.json();
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body" }, 400);
+  }
+
+  const parsed = subscribeSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return jsonResponse({ error: "Validation failed", issues: parsed.error.issues }, 400);
+  }
+
+  const exists = await findByEmail("subscribers", parsed.data.email);
+  if (exists) {
+    return jsonResponse({ success: true, persisted: true, duplicate: true });
+  }
+
+  const { persisted } = await insertDocument("subscribers", parsed.data);
+
+  return jsonResponse({
+    success: true,
+    persisted,
+    ...(!persisted && {
+      note: "Subscription accepted but persistence is unavailable. For production, set MONGODB_URI.",
+    }),
+  });
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const url = new URL(request.url);
@@ -150,6 +222,14 @@ export default {
 
     if (url.pathname === "/api/tryon/provider") {
       return applySecurityHeaders(jsonResponse({ provider: getProviderName() }));
+    }
+
+    if (url.pathname === "/api/demo") {
+      return applySecurityHeaders(await handleDemo(request));
+    }
+
+    if (url.pathname === "/api/subscribe") {
+      return applySecurityHeaders(await handleSubscribe(request));
     }
 
     try {

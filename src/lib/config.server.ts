@@ -6,5 +6,6 @@ export function getServerConfig() {
     tryonProvider: process.env.TRYON_PROVIDER ?? "none",
     fashnApiKey: process.env.FASHN_API_KEY,
     falKey: process.env.FAL_KEY,
+    mongodbUri: process.env.MONGODB_URI,
   };
 }

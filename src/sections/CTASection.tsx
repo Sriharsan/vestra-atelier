@@ -13,7 +13,17 @@ export function CTASection() {
     e.preventDefault();
     if (!email || submitting) return;
     setSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    try {
+      await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+    } catch {
+      // Degrade gracefully
+    }
+
     track("newsletter_subscribe", { email });
     setSubscribed(true);
     setSubmitting(false);
@@ -21,7 +31,7 @@ export function CTASection() {
 
   return (
     <section className="relative overflow-hidden">
-      <div className="mx-auto max-w-[1400px] px-6 py-28 md:px-10 md:py-40">
+      <div className="mx-auto max-w-[1400px] px-6 py-20 md:px-10 md:py-28">
         <div className="grid items-center gap-12 md:grid-cols-12">
           <div className="md:col-span-7">
             <Eyebrow>Step into the dressing room</Eyebrow>
