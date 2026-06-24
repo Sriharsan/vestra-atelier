@@ -64,7 +64,7 @@ export function Hero() {
             </Link>
           </motion.div>
 
-          <div className="mt-12 flex items-center gap-3">
+          <div className="mt-8 flex items-center gap-3">
             <IridescentBadge label="AI moments, marked" />
             <span className="text-xs text-ink-soft">
               The shimmer only appears where the model does its work.
@@ -93,7 +93,7 @@ export function Hero() {
             </div>
           </motion.div>
 
-          <div className="mt-4 flex items-start justify-between gap-6">
+          <div className="mt-6 flex items-start justify-between gap-6">
             <p className="max-w-[28ch] text-xs leading-relaxed text-ink-soft">
               <span className="eyebrow mr-2">Caption</span>
               Maison Aurelle, silk crêpe. Rendered on the shopper in 1.4 seconds.

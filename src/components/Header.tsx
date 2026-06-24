@@ -1,11 +1,14 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ShoppingBag } from "lucide-react";
 import { brand, nav } from "@/data/content";
+import { useCart } from "@/lib/cartStore";
 
 export function Header() {
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const cartItems = useCart();
+  const cartCount = cartItems.reduce((s, i) => s + i.quantity, 0);
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-canvas">
@@ -35,7 +38,19 @@ export function Header() {
           })}
         </nav>
 
-        <div className="hidden md:block">
+        <div className="hidden items-center gap-4 md:flex">
+          <Link
+            to="/cart"
+            className="relative text-ink-soft transition-colors hover:text-ink"
+            aria-label="Shopping cart"
+          >
+            <ShoppingBag aria-hidden className="h-5 w-5" />
+            {cartCount > 0 && (
+              <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-saffron-deep px-1 text-[10px] font-bold text-canvas">
+                {cartCount > 99 ? "99+" : cartCount}
+              </span>
+            )}
+          </Link>
           <Link to="/try-on" className="btn-saffron">
             Try it on
           </Link>
@@ -65,6 +80,13 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
+            <Link
+              to="/cart"
+              onClick={() => setOpen(false)}
+              className="font-display text-2xl text-ink"
+            >
+              Cart{cartCount > 0 && ` (${cartCount})`}
+            </Link>
             <Link
               to="/try-on"
               onClick={() => setOpen(false)}
