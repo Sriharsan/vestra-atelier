@@ -54,8 +54,16 @@ async function download(url: string, dest: string): Promise<void> {
 }
 
 const PEOPLE_QUERIES = [
-  { filename: "woman-1.jpg", query: "indian woman full body standing plain background", gender: "women" },
-  { filename: "woman-2.jpg", query: "south asian woman standing full body portrait", gender: "women" },
+  {
+    filename: "woman-1.jpg",
+    query: "indian woman full body standing plain background",
+    gender: "women",
+  },
+  {
+    filename: "woman-2.jpg",
+    query: "south asian woman standing full body portrait",
+    gender: "women",
+  },
   { filename: "man-1.jpg", query: "indian man full body standing plain background", gender: "men" },
   { filename: "man-2.jpg", query: "south asian man standing full body portrait", gender: "men" },
 ];
@@ -63,7 +71,11 @@ const PEOPLE_QUERIES = [
 const GARMENT_QUERIES = [
   { filename: "anarkali-suit.jpg", query: "anarkali suit indian fashion", id: "tryon-anarkali" },
   { filename: "lehenga-choli.jpg", query: "lehenga choli indian bridal", id: "tryon-lehenga" },
-  { filename: "salwar-kameez.jpg", query: "salwar kameez indian women fashion", id: "tryon-salwar" },
+  {
+    filename: "salwar-kameez.jpg",
+    query: "salwar kameez indian women fashion",
+    id: "tryon-salwar",
+  },
   { filename: "kurta-nehru.jpg", query: "kurta nehru jacket indian men", id: "tryon-kurta-nehru" },
   { filename: "sherwani.jpg", query: "sherwani indian men wedding", id: "tryon-sherwani" },
 ];

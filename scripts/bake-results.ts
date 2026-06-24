@@ -19,22 +19,69 @@ const GARMENT_DIR = join(ROOT, "public", "demo", "garments");
 const RESULTS_DIR = join(ROOT, "public", "demo", "results");
 
 const PAIRS = [
-  { person: "woman-1.jpg", garment: "anarkali-suit.jpg", out: "woman-1--anarkali.jpg", desc: "anarkali suit indian dress" },
-  { person: "woman-2.jpg", garment: "anarkali-suit.jpg", out: "woman-2--anarkali.jpg", desc: "anarkali suit indian dress" },
-  { person: "woman-1.jpg", garment: "lehenga-choli.jpg", out: "woman-1--lehenga.jpg", desc: "lehenga choli bridal dress" },
-  { person: "woman-2.jpg", garment: "lehenga-choli.jpg", out: "woman-2--lehenga.jpg", desc: "lehenga choli bridal dress" },
-  { person: "woman-1.jpg", garment: "salwar-kameez.jpg", out: "woman-1--salwar.jpg", desc: "salwar kameez cotton dress" },
-  { person: "woman-2.jpg", garment: "salwar-kameez.jpg", out: "woman-2--salwar.jpg", desc: "salwar kameez cotton dress" },
-  { person: "man-1.jpg", garment: "kurta-nehru.jpg", out: "man-1--kurta-nehru.jpg", desc: "kurta with nehru jacket" },
-  { person: "man-2.jpg", garment: "kurta-nehru.jpg", out: "man-2--kurta-nehru.jpg", desc: "kurta with nehru jacket" },
-  { person: "man-1.jpg", garment: "sherwani.jpg", out: "man-1--sherwani.jpg", desc: "sherwani wedding outfit" },
-  { person: "man-2.jpg", garment: "sherwani.jpg", out: "man-2--sherwani.jpg", desc: "sherwani wedding outfit" },
+  {
+    person: "woman-1.jpg",
+    garment: "anarkali-suit.jpg",
+    out: "woman-1--anarkali.jpg",
+    desc: "anarkali suit indian dress",
+  },
+  {
+    person: "woman-2.jpg",
+    garment: "anarkali-suit.jpg",
+    out: "woman-2--anarkali.jpg",
+    desc: "anarkali suit indian dress",
+  },
+  {
+    person: "woman-1.jpg",
+    garment: "lehenga-choli.jpg",
+    out: "woman-1--lehenga.jpg",
+    desc: "lehenga choli bridal dress",
+  },
+  {
+    person: "woman-2.jpg",
+    garment: "lehenga-choli.jpg",
+    out: "woman-2--lehenga.jpg",
+    desc: "lehenga choli bridal dress",
+  },
+  {
+    person: "woman-1.jpg",
+    garment: "salwar-kameez.jpg",
+    out: "woman-1--salwar.jpg",
+    desc: "salwar kameez cotton dress",
+  },
+  {
+    person: "woman-2.jpg",
+    garment: "salwar-kameez.jpg",
+    out: "woman-2--salwar.jpg",
+    desc: "salwar kameez cotton dress",
+  },
+  {
+    person: "man-1.jpg",
+    garment: "kurta-nehru.jpg",
+    out: "man-1--kurta-nehru.jpg",
+    desc: "kurta with nehru jacket",
+  },
+  {
+    person: "man-2.jpg",
+    garment: "kurta-nehru.jpg",
+    out: "man-2--kurta-nehru.jpg",
+    desc: "kurta with nehru jacket",
+  },
+  {
+    person: "man-1.jpg",
+    garment: "sherwani.jpg",
+    out: "man-1--sherwani.jpg",
+    desc: "sherwani wedding outfit",
+  },
+  {
+    person: "man-2.jpg",
+    garment: "sherwani.jpg",
+    out: "man-2--sherwani.jpg",
+    desc: "sherwani wedding outfit",
+  },
 ];
 
-const SPACES = [
-  "yisol/IDM-VTON",
-  "BoyuanJiang/Virtual-Try-On",
-];
+const SPACES = ["yisol/IDM-VTON", "BoyuanJiang/Virtual-Try-On"];
 
 async function fileToBlob(path: string): Promise<Blob> {
   const buf = await readFile(path);
@@ -100,14 +147,12 @@ async function tryGenericSpace(
 
   const api = await client.view_api();
   const endpoints = Object.keys(api.named_endpoints || {});
-  const tryonEndpoint = endpoints.find(e => e.includes("tryon") || e.includes("try")) || endpoints[0];
+  const tryonEndpoint =
+    endpoints.find((e) => e.includes("tryon") || e.includes("try")) || endpoints[0];
 
   if (!tryonEndpoint) return null;
 
-  const result = await client.predict(tryonEndpoint as `/${string}`, [
-    personBlob,
-    garmentBlob,
-  ]);
+  const result = await client.predict(tryonEndpoint as `/${string}`, [personBlob, garmentBlob]);
 
   const data = result.data as Array<{ url?: string } | string>;
   let imageUrl = "";
@@ -166,7 +211,7 @@ async function main() {
     for (let attempt = 0; attempt < 3 && !buf; attempt++) {
       if (attempt > 0) {
         console.log(`  Retry ${attempt}/2...`);
-        await new Promise(r => setTimeout(r, 5000));
+        await new Promise((r) => setTimeout(r, 5000));
       }
 
       if (idmClient) {
@@ -196,7 +241,7 @@ async function main() {
       failed.push(pair.out);
     }
 
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, 2000));
   }
 
   console.log(`\nDone. ${completed}/10 results generated.`);

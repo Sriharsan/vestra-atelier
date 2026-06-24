@@ -1,10 +1,7 @@
 import { Client } from "@gradio/client";
 import process from "node:process";
 
-const SPACES = [
-  "Kwai-Kolors/Kolors-Virtual-Try-On",
-  "yisol/IDM-VTON",
-];
+const SPACES = ["Kwai-Kolors/Kolors-Virtual-Try-On", "yisol/IDM-VTON"];
 
 async function main() {
   const token = process.env.TRYON_API_KEY || undefined;
