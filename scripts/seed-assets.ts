@@ -4,8 +4,8 @@
  * Usage:
  *   PEXELS_API_KEY=<key> npx tsx scripts/seed-assets.ts
  *
- * Downloads person presets and garment images into public/demo/.
- * Re-running refreshes assets without duplicating entries.
+ * Downloads person presets, garment images, and shop product images
+ * into public/demo/. Re-running skips files that already exist.
  */
 
 import { writeFile, mkdir } from "node:fs/promises";
@@ -22,6 +22,7 @@ if (!API_KEY) {
 const ROOT = join(import.meta.dirname, "..");
 const PEOPLE_DIR = join(ROOT, "public", "demo", "people");
 const GARMENT_DIR = join(ROOT, "public", "demo", "garments");
+const SHOP_DIR = join(ROOT, "public", "demo", "shop");
 
 interface PexelsPhoto {
   id: number;
@@ -56,33 +57,71 @@ async function download(url: string, dest: string): Promise<void> {
 const PEOPLE_QUERIES = [
   {
     filename: "woman-1.jpg",
-    query: "indian woman full body standing plain background",
+    query: "indian woman full body standing plain white background no accessories",
     gender: "women",
   },
   {
     filename: "woman-2.jpg",
-    query: "south asian woman standing full body portrait",
+    query: "south asian woman standing full body portrait plain background simple clothing",
     gender: "women",
   },
-  { filename: "man-1.jpg", query: "indian man full body standing plain background", gender: "men" },
-  { filename: "man-2.jpg", query: "south asian man standing full body portrait", gender: "men" },
+  {
+    filename: "man-1.jpg",
+    query: "indian man full body standing plain background simple clothing no accessories",
+    gender: "men",
+  },
+  {
+    filename: "man-2.jpg",
+    query: "south asian man standing full body portrait plain background casual",
+    gender: "men",
+  },
 ];
 
 const GARMENT_QUERIES = [
-  { filename: "anarkali-suit.jpg", query: "anarkali suit indian fashion", id: "tryon-anarkali" },
-  { filename: "lehenga-choli.jpg", query: "lehenga choli indian bridal", id: "tryon-lehenga" },
+  {
+    filename: "anarkali-suit.jpg",
+    query: "anarkali suit indian fashion flat lay",
+    id: "tryon-anarkali",
+  },
+  {
+    filename: "lehenga-choli.jpg",
+    query: "lehenga choli indian bridal outfit",
+    id: "tryon-lehenga",
+  },
   {
     filename: "salwar-kameez.jpg",
     query: "salwar kameez indian women fashion",
     id: "tryon-salwar",
   },
-  { filename: "kurta-nehru.jpg", query: "kurta nehru jacket indian men", id: "tryon-kurta-nehru" },
-  { filename: "sherwani.jpg", query: "sherwani indian men wedding", id: "tryon-sherwani" },
+  {
+    filename: "kurta-nehru.jpg",
+    query: "kurta nehru jacket indian men",
+    id: "tryon-kurta-nehru",
+  },
+  {
+    filename: "sherwani.jpg",
+    query: "sherwani indian men wedding outfit",
+    id: "tryon-sherwani",
+  },
+];
+
+const SHOP_QUERIES = [
+  { filename: "cream-silk-blouse.jpg", query: "cream silk blouse women fashion elegant" },
+  { filename: "clay-linen-dress.jpg", query: "linen dress women terracotta clay color" },
+  { filename: "anarkali-red.jpg", query: "red anarkali suit indian women fashion" },
+  { filename: "banarasi-saree.jpg", query: "banarasi silk saree red gold traditional" },
+  { filename: "midi-dress-green.jpg", query: "green pleated midi dress women fashion" },
+  { filename: "espresso-blazer.jpg", query: "brown double breasted blazer men fashion" },
+  { filename: "nehru-jacket.jpg", query: "navy nehru jacket indian men formal" },
+  { filename: "sherwani-ivory.jpg", query: "ivory white sherwani indian men wedding" },
+  { filename: "kurta-set-olive.jpg", query: "olive green kurta set indian men" },
+  { filename: "oxford-button-down.jpg", query: "blue oxford shirt men fashion" },
 ];
 
 async function main() {
   await mkdir(PEOPLE_DIR, { recursive: true });
   await mkdir(GARMENT_DIR, { recursive: true });
+  await mkdir(SHOP_DIR, { recursive: true });
 
   console.log("Seeding person presets...");
   for (const p of PEOPLE_QUERIES) {
@@ -103,6 +142,17 @@ async function main() {
       continue;
     }
     await download(photos[0].src.large, join(GARMENT_DIR, g.filename));
+    await new Promise((r) => setTimeout(r, 300));
+  }
+
+  console.log("\nSeeding shop product images...");
+  for (const s of SHOP_QUERIES) {
+    const photos = await searchPexels(s.query, 1);
+    if (photos.length === 0) {
+      console.log(`  WARN: no results for "${s.query}"`);
+      continue;
+    }
+    await download(photos[0].src.large, join(SHOP_DIR, s.filename));
     await new Promise((r) => setTimeout(r, 300));
   }
 

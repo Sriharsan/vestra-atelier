@@ -2,6 +2,7 @@ export interface TryOnRequest {
   personImage: string;
   garmentImage: string;
   garmentId: string;
+  category?: string;
 }
 
 export interface TryOnResult {
@@ -71,7 +72,7 @@ export async function* runTryOn(
         shopperImage: req.personImage,
         garmentImage: req.garmentImage,
         mode: "tryon",
-        category: "auto",
+        category: req.category ?? "one-pieces",
       }),
     });
 

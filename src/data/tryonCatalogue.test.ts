@@ -15,6 +15,7 @@ describe("tryonCatalogue", () => {
       expect(look.shopLink).toBeTruthy();
       expect(look.fabric).toBeTruthy();
       expect(look.description).toBeTruthy();
+      expect(look.garmentCategory).toMatch(/^(upper_body|lower_body|dresses)$/);
     }
   });
 

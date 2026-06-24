@@ -37,7 +37,6 @@ const CATEGORY_LABELS: Record<GarmentCategory, string> = {
   outerwear: "Outerwear",
   top: "Tops",
   bottom: "Bottoms",
-  shoe: "Shoes",
   accessory: "Accessories",
 };
 

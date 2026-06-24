@@ -201,10 +201,14 @@ async function runFal(
   throw new Error("fal prediction timed out after 180s");
 }
 
-async function runGradio(personImage: string, garmentImage: string): Promise<TryOnProviderResult> {
+async function runGradio(
+  personImage: string,
+  garmentImage: string,
+  category: FashnCategory = "auto",
+): Promise<TryOnProviderResult> {
   const { Client } = await import("@gradio/client");
 
-  const spaceUrl = process.env.TRYON_API_URL ?? "Kwai-Kolors/Kolors-Virtual-Try-On";
+  const spaceUrl = process.env.TRYON_API_URL ?? "franciszzj/Leffa";
   const hfToken = process.env.TRYON_API_KEY || undefined;
 
   const start = Date.now();
@@ -216,7 +220,20 @@ async function runGradio(personImage: string, garmentImage: string): Promise<Try
   const personBlob = await urlOrBase64ToBlob(personImage);
   const garmentBlob = await urlOrBase64ToBlob(garmentImage);
 
-  const result = await client.predict("/tryon", [personBlob, garmentBlob, 0, true]);
+  const leffaCategory =
+    category === "bottoms" ? "lower_body" : category === "tops" ? "upper_body" : "dresses";
+
+  const result = await client.predict("/leffa_predict_vt", [
+    personBlob,
+    garmentBlob,
+    false,
+    30,
+    2.5,
+    42,
+    "dress_code",
+    leffaCategory,
+    false,
+  ]);
 
   const data = result.data as Array<{ url?: string } | string>;
   let imageUrl = "";
@@ -270,7 +287,7 @@ export async function generateTryOn(
 
   if (provider === "fashn") return runFashn(personImage, garmentImage, category, mode, instruction);
   if (provider === "fal") return runFal(personImage, garmentImage, category, mode, instruction);
-  if (provider === "gradio" && garmentImage) return runGradio(personImage, garmentImage);
+  if (provider === "gradio" && garmentImage) return runGradio(personImage, garmentImage, category);
   return runMock();
 }
 
