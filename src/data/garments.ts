@@ -483,7 +483,6 @@ export const garments: Garment[] = [
     features: "Elasticated waist, flared leg, ankle length",
   },
 
-
   // ── Accessories ───────────────────────────────────────────
   {
     id: "a-potli-red",
