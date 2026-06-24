@@ -4,15 +4,16 @@ export interface TryOnProviderResult {
   imageUrl: string;
   durationMs: number;
   confidence: number;
-  provider: "fashn" | "fal" | "mock";
+  provider: "fashn" | "fal" | "gradio" | "mock";
+  queued?: boolean;
 }
 
 type FashnCategory = "tops" | "bottoms" | "one-pieces" | "auto";
 type TryOnMode = "tryon" | "edit";
 
-function resolveProvider(): "fashn" | "fal" | "none" {
+function resolveProvider(): "fashn" | "fal" | "gradio" | "none" {
   const v = (process.env.TRYON_PROVIDER ?? "none").toLowerCase();
-  if (v === "fashn" || v === "fal") return v;
+  if (v === "fashn" || v === "fal" || v === "gradio") return v;
   return "none";
 }
 
@@ -50,10 +51,7 @@ async function runFashn(
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model_name: "tryon-v1.6",
-      inputs,
-    }),
+    body: JSON.stringify({ model_name: "tryon-v1.6", inputs }),
   });
 
   if (!runRes.ok) {
@@ -203,6 +201,59 @@ async function runFal(
   throw new Error("fal prediction timed out after 180s");
 }
 
+async function runGradio(personImage: string, garmentImage: string): Promise<TryOnProviderResult> {
+  const { Client } = await import("@gradio/client");
+
+  const spaceUrl = process.env.TRYON_API_URL ?? "Kwai-Kolors/Kolors-Virtual-Try-On";
+  const hfToken = process.env.TRYON_API_KEY || undefined;
+
+  const start = Date.now();
+
+  const client = await Client.connect(spaceUrl, {
+    token: hfToken as `hf_${string}` | undefined,
+  });
+
+  const personBlob = await urlOrBase64ToBlob(personImage);
+  const garmentBlob = await urlOrBase64ToBlob(garmentImage);
+
+  const result = await client.predict("/tryon", [personBlob, garmentBlob, 0, true]);
+
+  const data = result.data as Array<{ url?: string } | string>;
+  let imageUrl = "";
+
+  if (typeof data[0] === "string") {
+    imageUrl = data[0];
+  } else if (data[0] && typeof data[0] === "object" && "url" in data[0]) {
+    imageUrl = data[0].url ?? "";
+  }
+
+  if (!imageUrl) {
+    throw new Error("Gradio returned no image");
+  }
+
+  return {
+    imageUrl,
+    durationMs: Date.now() - start,
+    confidence: 0.85,
+    provider: "gradio",
+  };
+}
+
+async function urlOrBase64ToBlob(input: string): Promise<Blob> {
+  if (input.startsWith("data:")) {
+    const [header, b64] = input.split(",");
+    const mime = header.match(/data:(.*?);/)?.[1] ?? "image/jpeg";
+    const buf = Buffer.from(b64, "base64");
+    return new Blob([buf], { type: mime });
+  }
+  if (input.startsWith("http://") || input.startsWith("https://")) {
+    const res = await fetch(input);
+    return res.blob();
+  }
+  const buf = Buffer.from(input, "base64");
+  return new Blob([buf], { type: "image/jpeg" });
+}
+
 async function runMock(): Promise<TryOnProviderResult> {
   await new Promise((r) => setTimeout(r, 1500));
   return { imageUrl: "", durationMs: 1400, confidence: 0.97, provider: "mock" };
@@ -219,9 +270,10 @@ export async function generateTryOn(
 
   if (provider === "fashn") return runFashn(personImage, garmentImage, category, mode, instruction);
   if (provider === "fal") return runFal(personImage, garmentImage, category, mode, instruction);
+  if (provider === "gradio" && garmentImage) return runGradio(personImage, garmentImage);
   return runMock();
 }
 
-export function getProviderName(): "fashn" | "fal" | "none" {
+export function getProviderName(): "fashn" | "fal" | "gradio" | "none" {
   return resolveProvider();
 }

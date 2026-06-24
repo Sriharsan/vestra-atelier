@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   Upload,
@@ -9,693 +9,610 @@ import {
   Share2,
   ShoppingBag,
   AlertCircle,
-  Heart,
+  GripVertical,
+  User,
 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Eyebrow } from "@/components/Eyebrow";
 import { IridescentBadge } from "@/components/IridescentBadge";
 import {
-  garments,
-  lookbook,
-  formatPrice,
-  type Garment,
-  type GarmentCategory,
-} from "@/data/garments";
-import { outfitPresets } from "@/data/content";
+  PERSON_PRESETS,
+  TRYON_LOOKS,
+  getLooksByGender,
+  getLookById,
+  type PersonPreset,
+  type TryOnLook,
+} from "@/data/tryonCatalogue";
 import { runTryOn, type TryOnStage, type TryOnResult } from "@/lib/stubs/tryOn";
 import { track } from "@/lib/stubs/analytics";
-import look1 from "@/assets/look-1.jpg";
-import look2 from "@/assets/look-2.jpg";
-import look3 from "@/assets/look-3.jpg";
-import heroModel from "@/assets/hero-model.jpg";
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_FILE_SIZE = 8 * 1024 * 1024;
 
-// Images are placeholders — replace with rights-cleared, diverse on-model photos.
-// heroModel: South Asian woman · look1: South Asian woman (saffron look)
-// look2: East Asian woman · look3: European man
-const PRESET_SHOPPERS = [
-  { id: "shopper-a", label: "Priya", gender: "women" as const, src: heroModel },
-  { id: "shopper-b", label: "Mei", gender: "women" as const, src: look2 },
-  { id: "shopper-c", label: "Arjun", gender: "men" as const, src: look3 },
-] as const;
-
-const CATEGORY_ORDER: GarmentCategory[] = ["outerwear", "top", "bottom", "shoe", "accessory"];
-const CATEGORY_LABEL: Record<GarmentCategory, string> = {
-  outerwear: "Outerwear",
-  top: "Top",
-  bottom: "Bottom",
-  shoe: "Shoe",
-  accessory: "Accessory",
-};
-
-interface SavedLook {
-  id: string;
-  garmentIds: string[];
-  timestamp: number;
-}
-
-function getSavedLooks(): SavedLook[] {
-  try {
-    return JSON.parse(localStorage.getItem("vestra-saved-looks") ?? "[]");
-  } catch {
-    return [];
-  }
-}
-
-function saveLook(look: SavedLook) {
-  const looks = getSavedLooks();
-  if (looks.some((l) => l.id === look.id)) return;
-  looks.unshift(look);
-  localStorage.setItem("vestra-saved-looks", JSON.stringify(looks.slice(0, 20)));
-}
-
-export function TryOnDemo() {
+export function TryOnDemo({ initialGarmentId }: { initialGarmentId?: string } = {}) {
   const reduced = useReducedMotion();
 
-  const [shopperId, setShopperId] = useState<string>(PRESET_SHOPPERS[0].id);
-  const [uploadedShopper, setUploadedShopper] = useState<string | null>(null);
+  const [gender, setGender] = useState<"women" | "men">("women");
+  const [personPresetId, setPersonPresetId] = useState<string | null>(PERSON_PRESETS[0].id);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const shopperSrc =
-    uploadedShopper ??
-    PRESET_SHOPPERS.find((s) => s.id === shopperId)?.src ??
-    PRESET_SHOPPERS[0].src;
+  const [isDragging, setIsDragging] = useState(false);
 
-  const initialSelection = useMemo(() => {
-    const map: Partial<Record<GarmentCategory, string>> = {};
-    lookbook[0].pieces.forEach((id) => {
-      const g = garments.find((g) => g.id === id);
-      if (g) map[g.category] = g.id;
-    });
-    return map;
-  }, []);
-
-  const [selection, setSelection] =
-    useState<Partial<Record<GarmentCategory, string>>>(initialSelection);
-  const [activePreset, setActivePreset] = useState<string | null>(null);
-  const [shareTooltip, setShareTooltip] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const garmentListRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const selectedGarments: Garment[] = useMemo(
-    () =>
-      CATEGORY_ORDER.map((c) => selection[c])
-        .filter((id): id is string => !!id)
-        .map((id) => garments.find((g) => g.id === id)!)
-        .filter(Boolean),
-    [selection],
-  );
-
+  const initialLookId = initialGarmentId
+    ? TRYON_LOOKS.find((l) => l.id === initialGarmentId)?.id
+    : undefined;
+  const [selectedLookId, setSelectedLookId] = useState<string | null>(initialLookId ?? null);
   const [stage, setStage] = useState<TryOnStage>({ kind: "idle" });
   const [result, setResult] = useState<TryOnResult | null>(null);
-  const [providerUsed, setProviderUsed] = useState<"fashn" | "fal" | "mock">("mock");
-  const [editInstruction, setEditInstruction] = useState("");
-  const [tryOnMode, setTryOnMode] = useState<"tryon" | "edit">("tryon");
+  const [shareTooltip, setShareTooltip] = useState(false);
 
-  const resolvedSrc = useMemo(() => {
-    const ids = Object.values(selection).filter(Boolean) as string[];
-    if (ids.includes("o-saffron-coat")) return look1;
-    if (ids.includes("t-clay-linen")) return look2;
-    if (ids.includes("o-espresso-blazer")) return look3;
-    return shopperSrc;
-  }, [selection, shopperSrc]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const [sliderPos, setSliderPos] = useState(50);
+  const draggingSlider = useRef(false);
 
-  function applyPreset(preset: (typeof outfitPresets)[number]) {
-    const next: Partial<Record<GarmentCategory, string>> = {};
-    for (const gId of preset.garmentIds) {
-      const g = garments.find((g) => g.id === gId);
-      if (g) next[g.category] = g.id;
-    }
-    setSelection(next);
-    setActivePreset(preset.name);
-    track("tryon_preset_applied", { preset: preset.name });
+  const personSrc = useMemo(() => {
+    if (uploadedImage) return uploadedImage;
+    const preset = PERSON_PRESETS.find((p) => p.id === personPresetId);
+    return preset?.src ?? PERSON_PRESETS[0].src;
+  }, [uploadedImage, personPresetId]);
+
+  const selectedLook = useMemo(
+    () => (selectedLookId ? getLookById(selectedLookId) : undefined),
+    [selectedLookId],
+  );
+
+  const filteredLooks = useMemo(() => getLooksByGender(gender), [gender]);
+
+  const isRendering =
+    stage.kind === "uploading" || stage.kind === "rendering" || stage.kind === "queued";
+  const canTry = !!personSrc && !!selectedLook && !isRendering;
+
+  function selectPreset(preset: PersonPreset) {
+    setPersonPresetId(preset.id);
+    setUploadedImage(null);
+    setUploadedFile(null);
+    setUploadError(null);
+    setGender(preset.gender);
+    setResult(null);
+    setStage({ kind: "idle" });
   }
 
-  const currentPreset = useMemo(() => {
-    if (!activePreset) return null;
-    const preset = outfitPresets.find((p) => p.name === activePreset);
-    if (!preset) return null;
-    const presetMap: Partial<Record<GarmentCategory, string>> = {};
-    for (const gId of preset.garmentIds) {
-      const g = garments.find((g) => g.id === gId);
-      if (g) presetMap[g.category] = g.id;
+  function handleFileSelect(file: File) {
+    setUploadError(null);
+    if (!ACCEPTED_TYPES.includes(file.type) && !file.name.toLowerCase().endsWith(".heic")) {
+      setUploadError("Upload a JPG, PNG, or WebP image.");
+      return;
     }
-    const matches = CATEGORY_ORDER.every(
-      (cat) => (presetMap[cat] ?? undefined) === (selection[cat] ?? undefined),
-    );
-    return matches ? activePreset : null;
-  }, [activePreset, selection]);
-
-  const alternatives = useMemo(() => {
-    if (stage.kind !== "done") return [];
-    const alts: { selected: Garment; suggestion: Garment }[] = [];
-    for (const sg of selectedGarments) {
-      const others = garments.filter((g) => g.category === sg.category && g.id !== sg.id);
-      for (const other of others) {
-        alts.push({ selected: sg, suggestion: other });
-        if (alts.length >= 4) return alts;
-      }
+    if (file.size > MAX_FILE_SIZE) {
+      setUploadError("Image must be under 8 MB.");
+      return;
     }
-    return alts;
-  }, [selectedGarments, stage.kind]);
-
-  const ariaStageText = useMemo(() => {
-    switch (stage.kind) {
-      case "idle":
-        return "Ready to render.";
-      case "uploading":
-        return `Uploading image, ${stage.progress} percent complete.`;
-      case "rendering":
-        return `Draping fabric, ${stage.progress} percent complete.`;
-      case "done":
-        return `Render complete. ${Math.round((result?.confidence ?? 0) * 100)} percent drape confidence.`;
-      case "error":
-        return `Render error: ${stage.message}`;
-      default:
-        return "";
-    }
-  }, [stage, result]);
-
-  const handleRender = useCallback(async () => {
-    if (selectedGarments.length === 0) return;
-
-    track("tryon_render_start", { shopperId, garments: Object.values(selection) });
+    const url = URL.createObjectURL(file);
+    setUploadedImage(url);
+    setUploadedFile(file);
+    setPersonPresetId(null);
     setResult(null);
-    setSaved(false);
-    setProviderUsed("mock");
+    setStage({ kind: "idle" });
+    track("tryon_upload");
+  }
+
+  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleFileSelect(file);
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileSelect(file);
+  }
+
+  function selectLook(look: TryOnLook) {
+    setSelectedLookId(look.id);
+    setResult(null);
+    setStage({ kind: "idle" });
+  }
+
+  const handleTryOn = useCallback(async () => {
+    if (!personSrc || !selectedLook) return;
+
+    track("tryon_start", { lookId: selectedLook.id });
+    setResult(null);
+    setSliderPos(50);
+
+    let personB64 = personSrc;
+    if (uploadedFile) {
+      const buf = await uploadedFile.arrayBuffer();
+      const b64 = btoa(new Uint8Array(buf).reduce((s, b) => s + String.fromCharCode(b), ""));
+      personB64 = `data:${uploadedFile.type};base64,${b64}`;
+    }
+
+    const presetId = personPresetId;
+    const prebaked =
+      presetId && selectedLook.prebakedResults?.[presetId]
+        ? selectedLook.prebakedResults[presetId]
+        : undefined;
 
     for await (const s of runTryOn(
       {
-        shopperImage: shopperSrc,
-        garmentIds: Object.values(selection).filter(Boolean) as string[],
+        personImage: personB64,
+        garmentImage: selectedLook.image,
+        garmentId: selectedLook.id,
       },
-      (_req) => ({
-        id: `tr_${Date.now()}`,
-        imageUrl: resolvedSrc,
-        garments: selectedGarments,
-        durationMs: 1400,
-        confidence: 0.97,
-      }),
+      prebaked,
     )) {
       setStage(s);
       if (s.kind === "done") {
         setResult(s.result);
-        setProviderUsed("mock");
-        track("tryon_render_done", { id: s.result.id });
+        track("tryon_done", { lookId: selectedLook.id, provider: s.result.provider });
       }
     }
-  }, [shopperSrc, selection, resolvedSrc, selectedGarments, shopperId]);
+  }, [personSrc, selectedLook, uploadedFile, personPresetId]);
 
-  useEffect(() => {
-    handleRender();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  function reset() {
+    setPersonPresetId(PERSON_PRESETS[0].id);
+    setUploadedImage(null);
+    setUploadedFile(null);
     setUploadError(null);
-
-    if (!ACCEPTED_TYPES.includes(file.type) && !file.name.toLowerCase().endsWith(".heic")) {
-      setUploadError("Please upload a JPG, PNG, or HEIC image.");
-      return;
-    }
-    if (file.size > MAX_FILE_SIZE) {
-      setUploadError("Image must be under 10 MB.");
-      return;
-    }
-
-    const url = URL.createObjectURL(file);
-    setUploadedShopper(url);
-    setShopperId("custom");
-    track("tryon_shopper_upload");
+    setGender("women");
+    setSelectedLookId(null);
+    setResult(null);
+    setStage({ kind: "idle" });
   }
 
   async function handleShare() {
     const shareData = {
       title: "My Vestra Look",
-      text: "Check out this outfit I composed on Vestra!",
+      text: "See this look I tried on Vestra.",
       url: window.location.href,
     };
-
     if (navigator.share) {
       try {
         await navigator.share(shareData);
         track("tryon_share", { method: "native" });
         return;
       } catch {
-        // User cancelled or share failed — fall through to clipboard
+        /* cancelled */
       }
     }
-
     await navigator.clipboard.writeText(window.location.href);
     setShareTooltip(true);
     track("tryon_share", { method: "clipboard" });
     setTimeout(() => setShareTooltip(false), 1500);
   }
 
-  function handleSaveLook() {
-    if (!result) return;
-    const ids = Object.values(selection).filter(Boolean) as string[];
-    saveLook({ id: result.id, garmentIds: ids, timestamp: Date.now() });
-    setSaved(true);
-    track("tryon_save_look", { id: result.id });
+  function onSliderMove(clientX: number) {
+    if (!sliderRef.current) return;
+    const rect = sliderRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+    setSliderPos((x / rect.width) * 100);
   }
 
-  function reset() {
-    setSelection(initialSelection);
-    setUploadedShopper(null);
-    setUploadError(null);
-    setShopperId(PRESET_SHOPPERS[0].id);
-    setActivePreset(null);
-    setSaved(false);
+  function onSliderPointerDown(e: React.PointerEvent) {
+    draggingSlider.current = true;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    onSliderMove(e.clientX);
   }
 
-  const isRendering = stage.kind === "uploading" || stage.kind === "rendering";
-  const total = selectedGarments.reduce((s, g) => s + g.price, 0);
-  const hasSelection = selectedGarments.length > 0;
-  const isMock = providerUsed === "mock";
+  function onSliderPointerMove(e: React.PointerEvent) {
+    if (!draggingSlider.current) return;
+    onSliderMove(e.clientX);
+  }
+
+  function onSliderPointerUp() {
+    draggingSlider.current = false;
+  }
+
+  const ariaStageText = useMemo(() => {
+    switch (stage.kind) {
+      case "idle":
+        return "Ready to try on.";
+      case "uploading":
+        return `Uploading, ${stage.progress} percent.`;
+      case "rendering":
+        return `Tailoring your look, ${stage.progress} percent.`;
+      case "queued":
+        return stage.message;
+      case "done":
+        return "Your look is ready.";
+      case "error":
+        return `Error: ${stage.message}`;
+      default:
+        return "";
+    }
+  }, [stage]);
 
   return (
-    <section className="mx-auto max-w-[1400px] px-6 py-16 md:px-10 md:py-24">
-      <div className="grid gap-10 md:grid-cols-12 lg:gap-14">
-        {/* Render canvas */}
-        <div className="md:col-span-7">
-          <div className="relative aspect-[3/4] w-full overflow-hidden rounded-sm bg-canvas-raised shadow-fabric-lg">
-            {!hasSelection && !result ? (
-              <div className="flex h-full items-center justify-center p-8 text-center">
-                <div>
-                  <p className="font-display text-xl text-ink/60">
-                    Select garments to compose a look
-                  </p>
-                  <p className="mt-2 text-sm text-ink-soft">
-                    Pick pieces from the categories on the right, then hit Render.
-                  </p>
-                </div>
-              </div>
+    <section className="mx-auto max-w-[1400px] px-6 py-12 md:px-10 md:py-20">
+      <div className="mb-10 max-w-2xl">
+        <Eyebrow>The dressing room</Eyebrow>
+        <h2
+          className="mt-3 font-display text-ink"
+          style={{
+            fontSize: "clamp(1.75rem, 3.6vw, 2.75rem)",
+            lineHeight: 1.05,
+            letterSpacing: "-0.02em",
+          }}
+        >
+          Upload your photo, <span className="italic text-saffron-deep">try it on.</span>
+        </h2>
+        <p className="mt-3 max-w-lg text-sm text-ink-soft">
+          Pick a person, choose a look, and see how it fits. Your photo stays in your browser during
+          demo mode.
+        </p>
+      </div>
+
+      {/* Diptych layout */}
+      <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
+        {/* LEFT — Person panel */}
+        <div>
+          <Eyebrow as="div">Your photo</Eyebrow>
+
+          {/* Upload zone */}
+          <div
+            className={`relative mt-3 aspect-[3/4] w-full overflow-hidden rounded-sm border-2 border-dashed transition ${
+              isDragging ? "border-saffron bg-saffron/5" : "border-line bg-canvas-raised"
+            }`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={onDrop}
+          >
+            {personSrc ? (
+              <img src={personSrc} alt="Selected person" className="h-full w-full object-cover" />
             ) : (
-              <AnimatePresence mode="wait">
-                <motion.img
-                  key={result?.imageUrl ?? shopperSrc}
-                  src={result?.imageUrl ?? shopperSrc}
-                  alt="Virtual try-on render"
-                  className="absolute inset-0 h-full w-full object-cover"
-                  initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 1.02 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: reduced ? 0.2 : 0.9, ease: [0.22, 1, 0.36, 1] }}
-                  width={1080}
-                  height={1440}
-                />
-              </AnimatePresence>
+              <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
+                <User className="h-10 w-10 text-ink/20" />
+                <p className="text-sm text-ink-soft">Drop a photo here or use a preset below</p>
+              </div>
             )}
 
+            {/* Shimmer overlay during render */}
             {isRendering && (
               <div className="absolute inset-0 iridescent mix-blend-soft-light" aria-hidden />
             )}
 
-            <div className="absolute left-4 top-4 flex items-center gap-2">
-              <IridescentBadge label={isRendering ? "Rendering" : "Rendered by Vestra"} />
-              {!isRendering && result && isMock && (
-                <span className="rounded-full border border-line bg-canvas/90 px-2.5 py-0.5 text-[10px] font-medium text-ink-soft">
-                  Preview
-                </span>
-              )}
-            </div>
+            {/* Result comparison slider */}
+            {result && result.imageUrl && stage.kind === "done" && (
+              <div
+                ref={sliderRef}
+                className="absolute inset-0 cursor-ew-resize select-none"
+                onPointerDown={onSliderPointerDown}
+                onPointerMove={onSliderPointerMove}
+                onPointerUp={onSliderPointerUp}
+                role="slider"
+                aria-label="Drag to compare"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(sliderPos)}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowLeft") setSliderPos((p) => Math.max(0, p - 2));
+                  if (e.key === "ArrowRight") setSliderPos((p) => Math.min(100, p + 2));
+                }}
+              >
+                <AnimatePresence>
+                  <motion.img
+                    key="result"
+                    src={result.imageUrl}
+                    alt="Try-on result"
+                    className="absolute inset-0 h-full w-full object-cover"
+                    style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
+                    initial={reduced ? { opacity: 0 } : { opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: reduced ? 0.2 : 0.9, ease: [0.22, 1, 0.36, 1] }}
+                  />
+                </AnimatePresence>
 
-            <div className="absolute bottom-4 left-4 right-4 flex flex-col items-start gap-2">
-              <div className="rounded-full border border-line bg-canvas/95 px-3 py-1.5 text-[11px] text-ink shadow-fabric-sm">
-                {stage.kind === "uploading" && <>Uploading — {stage.progress}%</>}
-                {stage.kind === "rendering" && <>Draping fabric — {stage.progress}%</>}
-                {stage.kind === "done" && result && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Check aria-hidden className="h-3 w-3 text-saffron-deep" />
-                    {Math.round((result.confidence ?? 0) * 100)}% drape confidence ·{" "}
-                    {(result.durationMs / 1000).toFixed(1)}s{isMock && " · AI preview"}
-                  </span>
-                )}
-                {stage.kind === "idle" && <>Ready</>}
-                {stage.kind === "error" && <span className="text-clay">{stage.message}</span>}
-              </div>
-
-              {stage.kind === "done" && result && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <a
-                    href={result.imageUrl}
-                    download="vestra-look.jpg"
-                    className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas/95 px-3 py-1.5 text-[11px] font-medium shadow-fabric-sm transition-colors hover:border-ink focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1"
-                  >
-                    <Download aria-hidden className="h-3 w-3" />
-                    Save image
-                  </a>
-                  <button
-                    type="button"
-                    onClick={handleSaveLook}
-                    disabled={saved}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas/95 px-3 py-1.5 text-[11px] font-medium shadow-fabric-sm transition-colors hover:border-ink focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1 disabled:opacity-60"
-                  >
-                    <Heart
-                      aria-hidden
-                      className={`h-3 w-3 ${saved ? "fill-saffron-deep text-saffron-deep" : ""}`}
-                    />
-                    {saved ? "Saved" : "Save look"}
-                  </button>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={handleShare}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas/95 px-3 py-1.5 text-[11px] font-medium shadow-fabric-sm transition-colors hover:border-ink focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1"
-                    >
-                      <Share2 aria-hidden className="h-3 w-3" />
-                      Share
-                    </button>
-                    {shareTooltip && (
-                      <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-ink px-2 py-0.5 text-[10px] text-canvas">
-                        Link copied
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => garmentListRef.current?.scrollIntoView({ behavior: "smooth" })}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas/95 px-3 py-1.5 text-[11px] font-medium shadow-fabric-sm transition-colors hover:border-ink focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1"
-                  >
-                    <ShoppingBag aria-hidden className="h-3 w-3" />
-                    Shop the look
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-3 space-y-2">
-            <p className="max-w-[60ch] text-xs text-ink-soft">
-              <span className="eyebrow mr-2">Note</span>
-              Results are AI-generated previews. For best results, use a clear, well-lit,
-              front-facing half or full body photo. Your photograph stays in your browser during
-              demo mode. In production, images are processed in-session, retained briefly for
-              quality, then permanently deleted. Never used for training.
-            </p>
-            {isMock && (
-              <p className="max-w-[60ch] text-xs text-ink-soft/70">
-                Running in preview mode — real rendering requires a configured provider key (FASHN
-                or fal.ai).
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Controls */}
-        <div className="md:col-span-5">
-          <Eyebrow>The dressing room</Eyebrow>
-          <h2
-            className="mt-3 font-display text-ink"
-            style={{
-              fontSize: "clamp(1.75rem, 3.6vw, 2.75rem)",
-              lineHeight: 1.05,
-              letterSpacing: "-0.02em",
-            }}
-          >
-            Compose a look,
-            <br />
-            <span className="italic text-saffron-deep">see it on you.</span>
-          </h2>
-
-          {/* Shopper picker */}
-          <div className="mt-8">
-            <Eyebrow as="div">Shopper</Eyebrow>
-            <p className="mt-1 text-xs text-ink-soft">
-              Use a clear, front-facing half or full body photo for best results.
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              {PRESET_SHOPPERS.map((s) => {
-                const active = !uploadedShopper && shopperId === s.id;
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => {
-                      setUploadedShopper(null);
-                      setUploadError(null);
-                      setShopperId(s.id);
-                    }}
-                    aria-pressed={active}
-                    aria-label={`Use ${s.label}`}
-                    className={`relative h-14 w-14 overflow-hidden rounded-full border transition focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1 ${
-                      active
-                        ? "border-ink ring-2 ring-saffron ring-offset-2 ring-offset-canvas"
-                        : "border-line hover:border-ink"
-                    }`}
-                  >
-                    <img src={s.src} alt="" className="h-full w-full object-cover" />
-                    <span className="absolute inset-x-0 bottom-0 bg-ink/60 px-1 py-0.5 text-[8px] text-canvas text-center">
-                      {s.label}
-                    </span>
-                  </button>
-                );
-              })}
-
-              {uploadedShopper && (
-                <button
-                  type="button"
-                  aria-pressed
-                  aria-label="Your uploaded photo"
-                  className="relative h-14 w-14 overflow-hidden rounded-full border border-ink ring-2 ring-saffron ring-offset-2 ring-offset-canvas transition"
+                {/* Slider handle */}
+                <div
+                  className="absolute top-0 bottom-0 z-10 w-0.5 bg-white shadow-lg"
+                  style={{ left: `${sliderPos}%` }}
                 >
-                  <img src={uploadedShopper} alt="" className="h-full w-full object-cover" />
-                  <span className="absolute inset-x-0 bottom-0 bg-ink/60 px-1 py-0.5 text-[8px] text-canvas text-center">
-                    You
+                  <div className="absolute left-1/2 top-1/2 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/80 bg-ink/70 text-white shadow-fabric">
+                    <GripVertical className="h-4 w-4" />
+                  </div>
+                </div>
+
+                {/* Labels */}
+                <span className="absolute left-3 top-3 rounded-full bg-ink/60 px-2 py-0.5 text-[10px] font-medium text-white">
+                  Before
+                </span>
+                <span className="absolute right-3 top-3 rounded-full bg-ink/60 px-2 py-0.5 text-[10px] font-medium text-white">
+                  After
+                </span>
+              </div>
+            )}
+
+            {/* Badge */}
+            <div className="absolute left-3 bottom-3">
+              {isRendering && <IridescentBadge label="Tailoring your look" />}
+              {stage.kind === "done" && result && <IridescentBadge label="Rendered by Vestra" />}
+            </div>
+          </div>
+
+          {/* Presets */}
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            {PERSON_PRESETS.filter((p) => p.gender === gender).map((p) => {
+              const active = !uploadedImage && personPresetId === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => selectPreset(p)}
+                  aria-pressed={active}
+                  aria-label={`Use ${p.label}`}
+                  className={`relative h-12 w-12 overflow-hidden rounded-full border transition focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1 ${
+                    active
+                      ? "border-ink ring-2 ring-saffron ring-offset-2 ring-offset-canvas"
+                      : "border-line hover:border-ink"
+                  }`}
+                >
+                  <img src={p.src} alt="" className="h-full w-full object-cover" />
+                  <span className="absolute inset-x-0 bottom-0 bg-ink/60 px-1 py-px text-[8px] text-canvas text-center">
+                    {p.label}
                   </span>
                 </button>
-              )}
-
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-canvas-raised px-3 py-2 text-xs text-ink-soft transition hover:border-ink hover:text-ink focus-within:ring-2 focus-within:ring-saffron focus-within:ring-offset-1">
-                <Upload aria-hidden className="h-3.5 w-3.5" />
-                Upload photo
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-                  className="sr-only"
-                  onChange={onUpload}
-                  aria-label="Upload a shopper photograph"
-                />
-              </label>
-            </div>
-            {uploadError && (
-              <p className="mt-2 flex items-center gap-1.5 text-xs text-clay" role="alert">
-                <AlertCircle aria-hidden className="h-3.5 w-3.5 shrink-0" />
-                {uploadError}
-              </p>
-            )}
-          </div>
-
-          {/* Quick looks */}
-          <div className="mt-8">
-            <Eyebrow as="div">Quick looks</Eyebrow>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {outfitPresets.map((preset) => {
-                const active = currentPreset === preset.name;
-                return (
-                  <button
-                    key={preset.name}
-                    type="button"
-                    onClick={() => applyPreset(preset)}
-                    aria-pressed={active}
-                    className={`rounded-full border px-4 py-2 text-sm transition focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1 ${
-                      active
-                        ? "border-ink bg-ink text-canvas"
-                        : "border-line bg-canvas text-ink-soft hover:border-ink hover:text-ink"
-                    }`}
-                  >
-                    {preset.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Garment picker */}
-          <div ref={garmentListRef} className="mt-8 space-y-5">
-            {CATEGORY_ORDER.map((cat) => {
-              const opts = garments.filter((g) => g.category === cat);
-              if (opts.length === 0) return null;
-              return (
-                <div key={cat}>
-                  <div className="flex items-baseline justify-between">
-                    <Eyebrow as="div">{CATEGORY_LABEL[cat]}</Eyebrow>
-                    {selection[cat] && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = { ...selection };
-                          delete next[cat];
-                          setSelection(next);
-                          setActivePreset(null);
-                        }}
-                        className="text-[11px] text-ink-soft underline-offset-2 hover:text-ink hover:underline focus:outline-none focus:underline"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {opts.map((g) => {
-                      const active = selection[cat] === g.id;
-                      return (
-                        <button
-                          key={g.id}
-                          type="button"
-                          onClick={() => {
-                            if (active) {
-                              const next = { ...selection };
-                              delete next[cat];
-                              setSelection(next);
-                            } else {
-                              setSelection({ ...selection, [cat]: g.id });
-                            }
-                            setActivePreset(null);
-                          }}
-                          aria-pressed={active}
-                          title={`${g.name} — ${g.brand} — ${formatPrice(g.price)}`}
-                          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1 ${
-                            active
-                              ? "border-ink bg-ink text-canvas"
-                              : "border-line bg-canvas text-ink-soft hover:border-ink hover:text-ink"
-                          }`}
-                        >
-                          <span
-                            aria-hidden
-                            className="h-2.5 w-2.5 rounded-full ring-1 ring-inset ring-ink/10"
-                            style={{ background: g.swatch }}
-                          />
-                          {g.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
               );
             })}
+
+            {uploadedImage && (
+              <div className="relative h-12 w-12 overflow-hidden rounded-full border border-ink ring-2 ring-saffron ring-offset-2 ring-offset-canvas">
+                <img src={uploadedImage} alt="Your upload" className="h-full w-full object-cover" />
+                <span className="absolute inset-x-0 bottom-0 bg-ink/60 px-1 py-px text-[8px] text-canvas text-center">
+                  You
+                </span>
+              </div>
+            )}
+
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-canvas-raised px-3 py-2 text-xs text-ink-soft transition hover:border-ink hover:text-ink focus-within:ring-2 focus-within:ring-saffron focus-within:ring-offset-1">
+              <Upload aria-hidden className="h-3.5 w-3.5" />
+              Upload photo
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                className="sr-only"
+                onChange={onFileChange}
+                aria-label="Upload your photograph"
+              />
+            </label>
           </div>
 
-          {/* Try instead suggestions */}
-          {alternatives.length > 0 && (
-            <div className="mt-6">
-              <Eyebrow as="div">Try instead</Eyebrow>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {alternatives.map(({ selected, suggestion }) => (
-                  <button
-                    key={`${selected.id}-${suggestion.id}`}
-                    type="button"
-                    onClick={() => {
-                      setSelection({ ...selection, [suggestion.category]: suggestion.id });
-                      setActivePreset(null);
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas px-3 py-1.5 text-[11px] text-ink-soft transition hover:border-ink hover:text-ink focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1"
-                  >
-                    <span
-                      aria-hidden
-                      className="h-2 w-2 rounded-full ring-1 ring-inset ring-ink/10"
-                      style={{ background: suggestion.swatch }}
-                    />
-                    {suggestion.name}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {uploadError && (
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-clay" role="alert">
+              <AlertCircle aria-hidden className="h-3.5 w-3.5 shrink-0" />
+              {uploadError}
+            </p>
           )}
 
-          {/* Recolor / edit mode */}
-          <div className="mt-8">
-            <Eyebrow as="div">Restyle</Eyebrow>
-            <p className="mt-1 text-xs text-ink-soft">
-              Describe a change — recolor, swap fabric, adjust styling — and the AI will apply it
-              while keeping your pose and identity.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {[
-                "Change the blazer to mustard yellow",
-                "Make the kurta cobalt blue",
-                "Switch to a floral print",
-                "Add a red silk dupatta",
-              ].map((suggestion) => (
+          {/* Status bar */}
+          <div className="mt-4">
+            {stage.kind === "uploading" && (
+              <div className="flex items-center gap-2 text-xs text-ink-soft">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Uploading — {stage.progress}%
+              </div>
+            )}
+            {stage.kind === "rendering" && (
+              <div className="flex items-center gap-2 text-xs text-ink-soft">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Tailoring your look — {stage.progress}%
+                {stage.etaMs > 5000 && (
+                  <span className="text-ink-soft/60">
+                    (may take up to {Math.ceil(stage.etaMs / 1000)}s on a free provider)
+                  </span>
+                )}
+              </div>
+            )}
+            {stage.kind === "queued" && (
+              <div className="flex items-center gap-2 text-xs text-ink-soft">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                {stage.message}
+              </div>
+            )}
+            {stage.kind === "done" && result && (
+              <div className="flex items-center gap-2 text-xs text-ink-soft">
+                <Check className="h-3.5 w-3.5 text-saffron-deep" />
+                {result.mock
+                  ? "Demo preview"
+                  : `Rendered in ${(result.durationMs / 1000).toFixed(1)}s`}
+                {" · "}Drag to compare
+              </div>
+            )}
+            {stage.kind === "error" && (
+              <p className="flex items-center gap-2 text-xs text-clay" role="alert">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {stage.message}
                 <button
-                  key={suggestion}
                   type="button"
-                  onClick={() => {
-                    setEditInstruction(suggestion);
-                    setTryOnMode("edit");
-                  }}
-                  className="rounded-full border border-line px-3 py-1.5 text-[11px] text-ink-soft transition hover:border-ink hover:text-ink"
+                  onClick={handleTryOn}
+                  className="ml-1 underline underline-offset-2 hover:text-ink"
                 >
-                  {suggestion}
+                  Retry
                 </button>
-              ))}
-            </div>
-            <textarea
-              value={editInstruction}
-              onChange={(e) => {
-                setEditInstruction(e.target.value);
-                setTryOnMode(e.target.value ? "edit" : "tryon");
-              }}
-              placeholder="e.g. change the tie to cobalt blue, keep everything else"
-              rows={2}
-              maxLength={500}
-              className="mt-3 w-full resize-none rounded-sm border border-line bg-canvas px-3 py-2 text-sm text-ink placeholder:text-ink-soft/60 focus:border-ink focus:outline-none"
-            />
-            {editInstruction && (
+              </p>
+            )}
+          </div>
+
+          {/* Result actions */}
+          {stage.kind === "done" && result && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {result.imageUrl && (
+                <a
+                  href={result.imageUrl}
+                  download="vestra-look.jpg"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs transition hover:border-ink focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1"
+                >
+                  <Download aria-hidden className="h-3 w-3" />
+                  Download
+                </a>
+              )}
               <button
                 type="button"
                 onClick={() => {
-                  setEditInstruction("");
-                  setTryOnMode("tryon");
+                  setResult(null);
+                  setStage({ kind: "idle" });
                 }}
-                className="mt-1 text-[11px] text-ink-soft underline-offset-2 hover:underline"
+                className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs transition hover:border-ink focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1"
               >
-                Clear instruction (use garment swap instead)
+                <RotateCcw aria-hidden className="h-3 w-3" />
+                Try another
               </button>
-            )}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs transition hover:border-ink focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1"
+                >
+                  <Share2 aria-hidden className="h-3 w-3" />
+                  Share
+                </button>
+                {shareTooltip && (
+                  <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-ink px-2 py-0.5 text-[10px] text-canvas">
+                    Link copied
+                  </span>
+                )}
+              </div>
+              {selectedLook && (
+                <Link
+                  to={selectedLook.shopLink}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs transition hover:border-ink focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1"
+                >
+                  <ShoppingBag aria-hidden className="h-3 w-3" />
+                  Shop this look
+                </Link>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT — Garment panel */}
+        <div>
+          {/* Gender toggle */}
+          <Eyebrow as="div">Whose look is this?</Eyebrow>
+          <div
+            className="mt-3 inline-flex rounded-full border border-line p-0.5"
+            role="radiogroup"
+            aria-label="Gender selection"
+          >
+            {(["women", "men"] as const).map((g) => (
+              <button
+                key={g}
+                type="button"
+                role="radio"
+                aria-checked={gender === g}
+                onClick={() => {
+                  setGender(g);
+                  setSelectedLookId(null);
+                  setResult(null);
+                  setStage({ kind: "idle" });
+                  if (!uploadedImage) {
+                    const preset = PERSON_PRESETS.find((p) => p.gender === g);
+                    if (preset) setPersonPresetId(preset.id);
+                  }
+                }}
+                className={`rounded-full px-5 py-2 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1 ${
+                  gender === g
+                    ? "bg-ink text-canvas shadow-fabric-sm"
+                    : "text-ink-soft hover:text-ink"
+                }`}
+              >
+                {g === "women" ? "Women" : "Men"}
+              </button>
+            ))}
           </div>
 
-          {/* ARIA live region */}
-          <div aria-live="polite" className="sr-only">
-            {ariaStageText}
+          {/* Dress rail */}
+          <div className="mt-8">
+            <Eyebrow as="div">Choose a look</Eyebrow>
+            <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+              {filteredLooks.map((look) => {
+                const active = selectedLookId === look.id;
+                return (
+                  <button
+                    key={look.id}
+                    type="button"
+                    onClick={() => selectLook(look)}
+                    aria-pressed={active}
+                    className={`group relative overflow-hidden rounded-sm border-2 transition focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-1 ${
+                      active
+                        ? "border-saffron shadow-fabric"
+                        : "border-transparent hover:border-line"
+                    }`}
+                  >
+                    <div className="aspect-[3/4] overflow-hidden bg-canvas-raised">
+                      <img
+                        src={look.image}
+                        alt={look.name}
+                        className="h-full w-full object-cover transition group-hover:scale-105"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="p-2 text-left">
+                      <p className="text-xs font-medium text-ink">{look.name}</p>
+                      <p className="mt-0.5 text-[10px] text-ink-soft">{look.fabric}</p>
+                    </div>
+                    {active && (
+                      <div className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-saffron text-white">
+                        <Check className="h-3 w-3" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Render action */}
-          <div className="mt-10 flex flex-wrap items-center gap-3 border-t border-line pt-6">
+          {/* Selected look detail */}
+          {selectedLook && (
+            <div className="mt-6 rounded-sm border border-line bg-canvas-raised p-4">
+              <p className="font-display text-lg text-ink">{selectedLook.name}</p>
+              <p className="mt-1 text-xs text-ink-soft">{selectedLook.description}</p>
+              <p className="mt-1 text-xs text-ink-soft">Fabric: {selectedLook.fabric}</p>
+            </div>
+          )}
+
+          {/* Action */}
+          <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-line pt-6">
             <button
               type="button"
-              onClick={handleRender}
-              disabled={isRendering || (!hasSelection && !editInstruction)}
+              onClick={handleTryOn}
+              disabled={!canTry}
               className="btn-saffron disabled:opacity-50"
             >
               {isRendering ? (
                 <>
                   <Loader2 aria-hidden className="h-4 w-4 animate-spin" />
-                  Draping…
+                  Tailoring…
                 </>
-              ) : tryOnMode === "edit" ? (
-                <>Restyle it</>
               ) : (
-                <>See it on me</>
+                "Try it on"
               )}
             </button>
             <button type="button" onClick={reset} className="btn-ghost">
               <RotateCcw aria-hidden className="h-4 w-4" />
               Reset
             </button>
-            {hasSelection && (
-              <div className="ml-auto text-right">
-                <div className="eyebrow">Outfit total</div>
-                <div className="font-display text-2xl text-ink">{formatPrice(total)}</div>
-              </div>
-            )}
           </div>
+
+          {/* Privacy note */}
+          <p className="mt-6 max-w-md text-[11px] text-ink-soft/70">
+            Results are AI-generated previews. Your photograph stays in your browser during demo
+            mode. In production, images are processed in-session, retained briefly for quality, then
+            permanently deleted. Never used for training.
+          </p>
         </div>
+      </div>
+
+      {/* ARIA live region */}
+      <div aria-live="polite" className="sr-only">
+        {ariaStageText}
       </div>
     </section>
   );
