@@ -251,24 +251,18 @@ export const faq = [
 export const outfitPresets = [
   {
     name: "Casual",
-    garmentIds: ["o-bone-trench", "t-sage-knit", "b-denim-indigo", "s-sneaker-white"],
+    garmentIds: ["o-bone-trench", "t-sage-knit", "b-denim-indigo"],
   },
   {
     name: "Professional",
-    garmentIds: ["o-espresso-blazer", "t-oxford-shirt", "b-ink-trouser", "s-loafer-cognac"],
+    garmentIds: ["o-espresso-blazer", "t-oxford-shirt", "b-palazzo-cream"],
   },
   {
     name: "Night Out",
-    garmentIds: ["t-clay-linen", "a-sage-scarf", "s-heel-nude"],
+    garmentIds: ["t-clay-linen", "t-silk-cami", "b-palazzo-cream"],
   },
   {
     name: "Festive",
-    garmentIds: [
-      "o-nehru-jacket",
-      "t-kurta-white",
-      "b-salwar-black",
-      "s-kolhapuri",
-      "a-dupatta-gold",
-    ],
+    garmentIds: ["o-nehru-jacket", "t-kurta-white", "a-potli-red"],
   },
 ];

@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
-import { SlidersHorizontal, X, ArrowUpDown, ChevronDown } from "lucide-react";
+import { SlidersHorizontal, X, ArrowUpDown, ChevronDown, ShoppingBag, Check } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Eyebrow } from "@/components/Eyebrow";
 import { Reveal } from "@/components/Reveal";
+import { ProductImage } from "@/components/ProductImage";
 import {
   garments,
   formatPrice,
@@ -12,6 +13,7 @@ import {
   type GarmentCategory,
   type GarmentGender,
 } from "@/data/garments";
+import { addToCart } from "@/lib/cartStore";
 
 export const Route = createFileRoute("/shop")({
   head: () => ({
@@ -50,7 +52,6 @@ function ShopPage() {
   const [genderFilter, setGenderFilter] = useState<GarmentGender | "all">("all");
   const [sort, setSort] = useState<SortKey>("name");
   const [selectedProduct, setSelectedProduct] = useState<Garment | null>(null);
-  const [previewGender, setPreviewGender] = useState<"men" | "women">("women");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const filtered = useMemo(() => {
@@ -74,6 +75,9 @@ function ShopPage() {
   }, [categoryFilter, genderFilter, sort]);
 
   const activeFilters = (categoryFilter !== "all" ? 1 : 0) + (genderFilter !== "all" ? 1 : 0);
+
+  const previewGender: "men" | "women" =
+    genderFilter === "men" ? "men" : genderFilter === "women" ? "women" : "women";
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
@@ -178,41 +182,16 @@ function ShopPage() {
           )}
 
           {/* Product grid */}
-          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="mt-8 grid gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((g, i) => (
-              <Reveal key={g.id} delay={i * 0.03}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedProduct(g);
-                    setPreviewGender(g.gender === "men" ? "men" : "women");
-                  }}
-                  className="group flex w-full flex-col text-left"
-                >
-                  <div className="relative aspect-[3/4] w-full overflow-hidden rounded-sm bg-canvas-raised shadow-fabric transition-shadow group-hover:shadow-fabric-lg">
-                    <img
-                      src={g.image}
-                      alt={g.name}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                    />
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/30 to-transparent p-4">
-                      <span className="text-xs font-medium text-canvas/90">{g.brand}</span>
-                    </div>
-                    <span
-                      aria-hidden
-                      className="absolute right-3 top-3 h-4 w-4 rounded-full ring-1 ring-inset ring-canvas/30"
-                      style={{ background: g.swatch }}
-                    />
-                  </div>
-                  <div className="mt-3">
-                    <h3 className="text-sm font-medium text-ink group-hover:text-saffron-deep transition-colors">
-                      {g.name}
-                    </h3>
-                    <p className="mt-0.5 text-xs text-ink-soft">{g.fabric}</p>
-                    <p className="mt-1 font-display text-lg text-ink">{formatPrice(g.price)}</p>
-                  </div>
-                </button>
+              <Reveal key={g.id} delay={Math.min(i * 0.03, 0.3)}>
+                <ProductCard
+                  garment={g}
+                  previewGender={
+                    g.gender === "men" ? "men" : g.gender === "women" ? "women" : previewGender
+                  }
+                  onSelect={() => setSelectedProduct(g)}
+                />
               </Reveal>
             ))}
           </div>
@@ -235,17 +214,211 @@ function ShopPage() {
         </div>
       </main>
 
-      {/* Product detail modal */}
       {selectedProduct && (
-        <ProductDetail
-          garment={selectedProduct}
-          previewGender={previewGender}
-          onPreviewGenderChange={setPreviewGender}
-          onClose={() => setSelectedProduct(null)}
-        />
+        <ProductDetail garment={selectedProduct} onClose={() => setSelectedProduct(null)} />
       )}
 
       <Footer />
+    </div>
+  );
+}
+
+function ProductCard({
+  garment,
+  previewGender,
+  onSelect,
+}: {
+  garment: Garment;
+  previewGender: "men" | "women";
+  onSelect: () => void;
+}) {
+  const [added, setAdded] = useState(false);
+
+  function handleAddToCart(e: React.MouseEvent) {
+    e.stopPropagation();
+    addToCart(garment.id);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1200);
+  }
+
+  return (
+    <div className="group flex flex-col">
+      <button type="button" onClick={onSelect} className="text-left">
+        <div className="relative aspect-[3/4] w-full overflow-hidden rounded-sm bg-canvas-raised shadow-fabric transition-shadow group-hover:shadow-fabric-lg">
+          <ProductImage
+            garment={garment}
+            variant="model"
+            gender={previewGender}
+            className="h-full w-full object-cover"
+          />
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/40 to-transparent p-3 pt-8">
+            <span className="text-[11px] font-medium tracking-wide text-canvas/90">
+              {garment.brand}
+            </span>
+          </div>
+        </div>
+      </button>
+      <div className="mt-2.5 flex items-start justify-between gap-2">
+        <button type="button" onClick={onSelect} className="min-w-0 flex-1 text-left">
+          <h3 className="truncate text-sm font-medium text-ink transition-colors group-hover:text-saffron-deep">
+            {garment.name}
+          </h3>
+          <p className="mt-0.5 truncate text-xs text-ink-soft">{garment.fabric}</p>
+          <p className="mt-1 font-display text-base text-ink">{formatPrice(garment.price)}</p>
+        </button>
+        <button
+          type="button"
+          onClick={handleAddToCart}
+          className="mt-0.5 shrink-0 rounded-full border border-line p-2 text-ink-soft transition hover:border-ink hover:text-ink"
+          aria-label={`Add ${garment.name} to cart`}
+        >
+          {added ? (
+            <Check aria-hidden className="h-4 w-4 text-saffron-deep" />
+          ) : (
+            <ShoppingBag aria-hidden className="h-4 w-4" />
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ProductDetail({ garment, onClose }: { garment: Garment; onClose: () => void }) {
+  const defaultGender: "men" | "women" = garment.gender === "men" ? "men" : "women";
+  const [previewGender, setPreviewGender] = useState<"men" | "women">(defaultGender);
+  const [added, setAdded] = useState(false);
+
+  const showGenderToggle = garment.gender === "unisex";
+
+  function handleAdd() {
+    addToCart(garment.id);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1200);
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-sm border border-line bg-canvas shadow-fabric-lg">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 z-10 rounded-full bg-canvas/90 p-2 text-ink hover:bg-canvas"
+          aria-label="Close"
+        >
+          <X aria-hidden className="h-5 w-5" />
+        </button>
+
+        <div className="grid gap-8 p-6 md:grid-cols-2 md:p-8">
+          {/* Image side */}
+          <div className="space-y-3">
+            <div className="relative aspect-[3/4] overflow-hidden rounded-sm bg-canvas-raised">
+              <ProductImage
+                garment={garment}
+                variant="model"
+                gender={previewGender}
+                className="h-full w-full object-cover"
+              />
+            </div>
+            {showGenderToggle && (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPreviewGender("women")}
+                  className={`flex-1 rounded-sm border px-3 py-2 text-xs transition ${
+                    previewGender === "women"
+                      ? "border-ink bg-ink text-canvas"
+                      : "border-line text-ink-soft hover:border-ink"
+                  }`}
+                >
+                  Women's preview
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewGender("men")}
+                  className={`flex-1 rounded-sm border px-3 py-2 text-xs transition ${
+                    previewGender === "men"
+                      ? "border-ink bg-ink text-canvas"
+                      : "border-line text-ink-soft hover:border-ink"
+                  }`}
+                >
+                  Men's preview
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Detail side */}
+          <div className="flex flex-col">
+            <Eyebrow>{garment.brand}</Eyebrow>
+            <h2
+              className="mt-2 font-display text-2xl text-ink md:text-3xl"
+              style={{ letterSpacing: "-0.01em" }}
+            >
+              {garment.name}
+            </h2>
+            <p className="mt-3 font-display text-2xl text-saffron-deep">
+              {formatPrice(garment.price)}
+            </p>
+
+            <dl className="mt-6 space-y-3 border-t border-line pt-6">
+              <div className="flex justify-between text-sm">
+                <dt className="text-ink-soft">Fabric</dt>
+                <dd className="text-right text-ink">{garment.fabric}</dd>
+              </div>
+              <div className="flex justify-between text-sm">
+                <dt className="text-ink-soft">Category</dt>
+                <dd className="text-ink capitalize">{garment.category}</dd>
+              </div>
+              <div className="flex justify-between text-sm">
+                <dt className="text-ink-soft">Fit</dt>
+                <dd className="text-ink capitalize">{garment.gender}</dd>
+              </div>
+              {garment.features && (
+                <div className="text-sm">
+                  <dt className="text-ink-soft">Details</dt>
+                  <dd className="mt-1 text-ink">{garment.features}</dd>
+                </div>
+              )}
+            </dl>
+
+            <div className="mt-auto space-y-3 pt-8">
+              <button
+                type="button"
+                onClick={handleAdd}
+                className="btn-saffron w-full justify-center"
+              >
+                {added ? (
+                  <>
+                    <Check aria-hidden className="h-4 w-4" />
+                    Added to cart
+                  </>
+                ) : (
+                  <>
+                    <ShoppingBag aria-hidden className="h-4 w-4" />
+                    Add to cart
+                  </>
+                )}
+              </button>
+              <Link
+                to="/try-on"
+                search={{ garmentId: garment.id }}
+                onClick={onClose}
+                className="btn-primary w-full justify-center text-center"
+              >
+                Try this on me
+              </Link>
+              <p className="text-center text-[11px] text-ink-soft">
+                Opens the dressing room with this piece ready to render.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -271,124 +444,5 @@ function FilterChip({
     >
       {children}
     </button>
-  );
-}
-
-function ProductDetail({
-  garment,
-  previewGender,
-  onPreviewGenderChange,
-  onClose,
-}: {
-  garment: Garment;
-  previewGender: "men" | "women";
-  onPreviewGenderChange: (g: "men" | "women") => void;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm">
-      <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-sm border border-line bg-canvas shadow-fabric-lg">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-4 top-4 z-10 rounded-full bg-canvas/90 p-2 text-ink hover:bg-canvas"
-          aria-label="Close"
-        >
-          <X aria-hidden className="h-5 w-5" />
-        </button>
-
-        <div className="grid gap-8 p-8 md:grid-cols-2">
-          {/* Image side */}
-          <div className="space-y-4">
-            <div className="relative aspect-[3/4] overflow-hidden rounded-sm bg-canvas-raised">
-              <img
-                src={garment.image}
-                alt={`${garment.name} — ${previewGender === "men" ? "men's" : "women's"} preview`}
-                className="h-full w-full object-cover"
-              />
-              <span
-                aria-hidden
-                className="absolute right-3 top-3 h-5 w-5 rounded-full ring-1 ring-inset ring-canvas/30"
-                style={{ background: garment.swatch }}
-              />
-              <p className="absolute bottom-3 left-3 rounded-full bg-canvas/90 px-2 py-1 text-[10px] text-ink-soft">
-                Placeholder — replace with on-model photo
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => onPreviewGenderChange("women")}
-                className={`flex-1 rounded-sm border px-3 py-2 text-xs transition ${
-                  previewGender === "women"
-                    ? "border-ink bg-ink text-canvas"
-                    : "border-line text-ink-soft hover:border-ink"
-                }`}
-              >
-                Women's preview
-              </button>
-              <button
-                type="button"
-                onClick={() => onPreviewGenderChange("men")}
-                className={`flex-1 rounded-sm border px-3 py-2 text-xs transition ${
-                  previewGender === "men"
-                    ? "border-ink bg-ink text-canvas"
-                    : "border-line text-ink-soft hover:border-ink"
-                }`}
-              >
-                Men's preview
-              </button>
-            </div>
-            <p className="text-[10px] text-ink-soft/70">
-              On-model images can be generated per garment via the try-on provider (~₹6/image).
-            </p>
-          </div>
-
-          {/* Detail side */}
-          <div className="flex flex-col">
-            <Eyebrow>{garment.brand}</Eyebrow>
-            <h2
-              className="mt-2 font-display text-2xl text-ink md:text-3xl"
-              style={{ letterSpacing: "-0.01em" }}
-            >
-              {garment.name}
-            </h2>
-            <p className="mt-3 font-display text-2xl text-saffron-deep">
-              {formatPrice(garment.price)}
-            </p>
-
-            <dl className="mt-6 space-y-3 border-t border-line pt-6">
-              <div className="flex justify-between text-sm">
-                <dt className="text-ink-soft">Fabric</dt>
-                <dd className="text-ink">{garment.fabric}</dd>
-              </div>
-              <div className="flex justify-between text-sm">
-                <dt className="text-ink-soft">Category</dt>
-                <dd className="text-ink capitalize">{garment.category}</dd>
-              </div>
-              <div className="flex justify-between text-sm">
-                <dt className="text-ink-soft">Fit</dt>
-                <dd className="text-ink capitalize">{garment.gender}</dd>
-              </div>
-              {garment.features && (
-                <div className="text-sm">
-                  <dt className="text-ink-soft">Details</dt>
-                  <dd className="mt-1 text-ink">{garment.features}</dd>
-                </div>
-              )}
-            </dl>
-
-            <div className="mt-auto pt-8">
-              <Link to="/try-on" onClick={onClose} className="btn-primary w-full text-center">
-                Try this on me
-              </Link>
-              <p className="mt-3 text-center text-[11px] text-ink-soft">
-                Opens the dressing room with this piece ready to render.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
