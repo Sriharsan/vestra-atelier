@@ -38,3 +38,31 @@ export const subscribeSchema = z.object({
 });
 
 export type SubscribeData = z.infer<typeof subscribeSchema>;
+
+export const orderSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        garmentId: z.string().min(1),
+        name: z.string().min(1).max(200),
+        price: z.number().min(0),
+        quantity: z.number().int().min(1).max(50),
+      }),
+    )
+    .min(1)
+    .max(100),
+  address: z.object({
+    fullName: z.string().min(1).max(200),
+    phone: z.string().min(10).max(15),
+    line1: z.string().min(1).max(500),
+    line2: z.string().max(500).default(""),
+    city: z.string().min(1).max(100),
+    state: z.string().min(1).max(100),
+    pincode: z.string().regex(/^\d{6}$/),
+  }),
+  paymentMethod: z.enum(["card", "upi"]),
+  subtotal: z.number().min(0),
+  currency: z.literal("INR"),
+});
+
+export type OrderData = z.infer<typeof orderSchema>;

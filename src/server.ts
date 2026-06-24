@@ -3,7 +3,12 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { applySecurityHeaders } from "./lib/security-headers";
-import { tryOnRequestSchema, demoRequestSchema, subscribeSchema } from "./lib/validation";
+import {
+  tryOnRequestSchema,
+  demoRequestSchema,
+  subscribeSchema,
+  orderSchema,
+} from "./lib/validation";
 import { checkRateLimit } from "./lib/rate-limit";
 import { generateTryOn, getProviderName } from "./lib/tryon-provider.server";
 import { insertDocument, findByEmail } from "./lib/db.server";
@@ -206,6 +211,50 @@ async function handleSubscribe(request: Request): Promise<Response> {
   });
 }
 
+async function handleOrder(request: Request): Promise<Response> {
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed" }, 405);
+  }
+
+  const ip = clientIp(request);
+  const rateCheck = checkRateLimit(`order:${ip}`, 5, 60_000);
+  if (!rateCheck.allowed) {
+    return jsonResponse({ error: "Rate limit exceeded" }, 429);
+  }
+
+  let rawBody: unknown;
+  try {
+    rawBody = await request.json();
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body" }, 400);
+  }
+
+  const parsed = orderSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return jsonResponse({ error: "Validation failed", issues: parsed.error.issues }, 400);
+  }
+
+  const order = {
+    ...parsed.data,
+    orderId: `VA-${Date.now().toString(36).toUpperCase()}`,
+    status: "confirmed",
+    sandbox: true,
+    createdAt: new Date().toISOString(),
+  };
+
+  const { persisted } = await insertDocument("orders", order);
+
+  return jsonResponse({
+    success: true,
+    orderId: order.orderId,
+    persisted,
+    sandbox: true,
+    ...(!persisted && {
+      note: "Order accepted but persistence is unavailable. Set MONGODB_URI for production.",
+    }),
+  });
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const url = new URL(request.url);
@@ -230,6 +279,10 @@ export default {
 
     if (url.pathname === "/api/subscribe") {
       return applySecurityHeaders(await handleSubscribe(request));
+    }
+
+    if (url.pathname === "/api/orders") {
+      return applySecurityHeaders(await handleOrder(request));
     }
 
     try {
