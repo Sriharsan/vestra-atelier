@@ -93,7 +93,6 @@ const PAIRS: BakePair[] = [
 
 const PRIMARY_SPACE = "franciszzj/Leffa";
 const FALLBACK_SPACE = "zhengchong/CatVTON";
-const LEGACY_SPACE = "yisol/IDM-VTON";
 
 async function fileToBlob(path: string): Promise<Blob> {
   const buf = await readFile(path);
@@ -109,32 +108,38 @@ async function tryLeffa(
   const personBlob = await fileToBlob(personPath);
   const garmentBlob = await fileToBlob(garmentPath);
 
-  const result = await client.predict("/leffa_predict_vt", [
-    personBlob,
-    garmentBlob,
-    false,
-    30,
-    2.5,
-    42,
-    "dress_code",
-    category,
-    false,
-  ]);
+  const result = await client.predict("/leffa_predict_vt", {
+    src_image_path: personBlob,
+    ref_image_path: garmentBlob,
+    ref_acceleration: false,
+    step: 30,
+    scale: 2.5,
+    seed: 42,
+    vt_model_type: "dress_code",
+    vt_garment_type: category,
+    vt_repaint: false,
+  });
 
-  const data = result.data as Array<{ url?: string } | string | null>;
+  const data = result.data as Array<{ url?: string; path?: string } | string | null>;
+  const first = data[0];
   let imageUrl = "";
 
-  if (typeof data[0] === "string") {
-    imageUrl = data[0];
-  } else if (data[0] && typeof data[0] === "object" && "url" in data[0]) {
-    imageUrl = data[0].url ?? "";
+  if (typeof first === "string") {
+    imageUrl = first;
+  } else if (first && typeof first === "object") {
+    imageUrl = first.url ?? "";
   }
 
   if (!imageUrl) return null;
 
   const res = await fetch(imageUrl);
   if (!res.ok) return null;
-  return Buffer.from(await res.arrayBuffer());
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.length < 5000) {
+    console.log(`  Warning: result too small (${buf.length} bytes), likely a thumbnail`);
+    return null;
+  }
+  return buf;
 }
 
 function mapCategoryToCatVTON(cat: GarmentCategory): string {
@@ -182,49 +187,6 @@ async function tryCatVTON(
   return Buffer.from(await res.arrayBuffer());
 }
 
-async function tryIDMVTON(
-  client: Awaited<ReturnType<typeof Client.connect>>,
-  personPath: string,
-  garmentPath: string,
-  desc: string,
-): Promise<Buffer | null> {
-  const personBlob = await fileToBlob(personPath);
-  const garmentBlob = await fileToBlob(garmentPath);
-
-  const result = await client.predict("/tryon", [
-    { background: personBlob, layers: [], composite: null },
-    garmentBlob,
-    desc,
-    true,
-    false,
-    30,
-    42,
-  ]);
-
-  const data = result.data as Array<{ url?: string } | string | null>;
-  let imageUrl = "";
-
-  if (typeof data[0] === "string") {
-    imageUrl = data[0];
-  } else if (data[0] && typeof data[0] === "object" && "url" in data[0]) {
-    imageUrl = data[0].url ?? "";
-  }
-
-  if (!imageUrl) return null;
-
-  const res = await fetch(imageUrl);
-  if (!res.ok) return null;
-  return Buffer.from(await res.arrayBuffer());
-}
-
-const GARMENT_DESCS: Record<string, string> = {
-  "anarkali-suit.jpg": "full length anarkali suit dress with churidar",
-  "lehenga-choli.jpg": "bridal lehenga choli outfit with dupatta",
-  "salwar-kameez.jpg": "salwar kameez full outfit with dupatta",
-  "kurta-nehru.jpg": "kurta with nehru jacket full outfit",
-  "sherwani.jpg": "full length sherwani with churidar",
-};
-
 async function main() {
   const token = process.env.TRYON_API_KEY || undefined;
   if (!token) {
@@ -245,19 +207,7 @@ async function main() {
     console.log("Leffa connect failed:", (err as Error).message?.substring(0, 100));
   }
 
-  console.log(`Connecting to ${LEGACY_SPACE} (upper-body fallback)...`);
-  let idmClient: Awaited<ReturnType<typeof Client.connect>> | null = null;
-  try {
-    idmClient = await Client.connect(LEGACY_SPACE, {
-      token: token as `hf_${string}`,
-    });
-    console.log("Connected to IDM-VTON.");
-  } catch (err) {
-    console.log("IDM-VTON connect failed:", (err as Error).message?.substring(0, 100));
-  }
-
   const failed: string[] = [];
-  const upperOnly: string[] = [];
   let completed = 0;
 
   for (const pair of PAIRS) {
@@ -268,9 +218,8 @@ async function main() {
     const garmentPath = join(GARMENT_DIR, pair.garment);
 
     let buf: Buffer | null = null;
-    let usedFallback = false;
 
-    // Try Leffa first (full-body dress mode)
+    // Try Leffa (full-body dress mode)
     if (leffaClient) {
       for (let attempt = 0; attempt < 2 && !buf; attempt++) {
         if (attempt > 0) await new Promise((r) => setTimeout(r, 5000));
@@ -280,7 +229,7 @@ async function main() {
           const msg = (err as Error).message ?? "";
           console.log(`  Leffa error: ${msg.substring(0, 150)}`);
           if (msg.includes("ZeroGPU quota")) {
-            console.log("  ZeroGPU quota exhausted, skipping Leffa for remaining items.");
+            console.log("  ZeroGPU quota exhausted. Stopping — re-run when quota resets.");
             leffaClient = null;
             break;
           }
@@ -298,27 +247,10 @@ async function main() {
       }
     }
 
-    // Fall back to IDM-VTON (upper-body only)
-    if (!buf && idmClient) {
-      console.log("  Falling back to IDM-VTON (upper-body only)...");
-      for (let attempt = 0; attempt < 3 && !buf; attempt++) {
-        if (attempt > 0) await new Promise((r) => setTimeout(r, 5000));
-        try {
-          const desc = GARMENT_DESCS[pair.garment] ?? "garment";
-          buf = await tryIDMVTON(idmClient, personPath, garmentPath, desc);
-          usedFallback = true;
-        } catch (err) {
-          console.log(`  IDM-VTON error: ${(err as Error).message?.substring(0, 150)}`);
-        }
-      }
-    }
-
     if (buf && buf.length > 1000) {
       await writeFile(outPath, buf);
-      const source = usedFallback ? " [upper-body only — IDM-VTON fallback]" : " [full-body]";
-      console.log(`  OK ${pair.out} (${(buf.length / 1024).toFixed(0)} KB)${source}`);
+      console.log(`  OK ${pair.out} (${(buf.length / 1024).toFixed(0)} KB) [full-body]`);
       completed++;
-      if (usedFallback) upperOnly.push(pair.out);
     } else {
       console.log(`  FAILED ${pair.out} — no valid image returned`);
       failed.push(pair.out);
@@ -328,12 +260,9 @@ async function main() {
   }
 
   console.log(`\nDone. ${completed}/10 results generated.`);
-  if (upperOnly.length > 0) {
-    console.log(`Upper-body only (IDM-VTON fallback): ${upperOnly.join(", ")}`);
-    console.log("Re-run when ZeroGPU quota resets for full-body dress results via Leffa.");
-  }
   if (failed.length > 0) {
     console.log("Failed slots:", failed.join(", "));
+    console.log("Re-run when ZeroGPU quota resets.");
   }
 }
 

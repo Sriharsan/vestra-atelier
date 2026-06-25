@@ -26,7 +26,7 @@ const SHOP_DIR = join(ROOT, "public", "demo", "shop");
 
 interface PexelsPhoto {
   id: number;
-  src: { large: string; medium: string };
+  src: { original: string; large2x: string; large: string; medium: string };
   photographer: string;
 }
 
@@ -42,9 +42,11 @@ async function searchPexels(query: string, perPage = 3): Promise<PexelsPhoto[]> 
   return data.photos;
 }
 
+const FORCE = process.argv.includes("--force");
+
 async function download(url: string, dest: string): Promise<void> {
-  if (existsSync(dest)) {
-    console.log(`  SKIP ${dest} (exists)`);
+  if (!FORCE && existsSync(dest)) {
+    console.log(`  SKIP ${dest} (exists, use --force to overwrite)`);
     return;
   }
   const res = await fetch(url);
@@ -106,16 +108,16 @@ const GARMENT_QUERIES = [
 ];
 
 const SHOP_QUERIES = [
-  { filename: "cream-silk-blouse.jpg", query: "cream silk blouse women fashion elegant" },
-  { filename: "clay-linen-dress.jpg", query: "linen dress women terracotta clay color" },
-  { filename: "anarkali-red.jpg", query: "red anarkali suit indian women fashion" },
-  { filename: "banarasi-saree.jpg", query: "banarasi silk saree red gold traditional" },
-  { filename: "midi-dress-green.jpg", query: "green pleated midi dress women fashion" },
-  { filename: "espresso-blazer.jpg", query: "brown double breasted blazer men fashion" },
-  { filename: "nehru-jacket.jpg", query: "navy nehru jacket indian men formal" },
-  { filename: "sherwani-ivory.jpg", query: "ivory white sherwani indian men wedding" },
-  { filename: "kurta-set-olive.jpg", query: "olive green kurta set indian men" },
-  { filename: "oxford-button-down.jpg", query: "blue oxford shirt men fashion" },
+  { filename: "cream-silk-blouse.jpg", query: "cream silk blouse elegant women" },
+  { filename: "clay-linen-dress.jpg", query: "terracotta brown linen dress woman minimal" },
+  { filename: "anarkali-red.jpg", query: "red suit floral dupatta indian woman" },
+  { filename: "banarasi-saree.jpg", query: "banarasi silk saree red gold traditional indian" },
+  { filename: "midi-dress-green.jpg", query: "turquoise pleated dress woman studio" },
+  { filename: "espresso-blazer.jpg", query: "brown double breasted blazer man suit" },
+  { filename: "nehru-jacket.jpg", query: "nehru jacket man formal traditional indoors" },
+  { filename: "sherwani-ivory.jpg", query: "indian groom white sherwani turban outdoors" },
+  { filename: "kurta-set-olive.jpg", query: "green kurta man portrait night" },
+  { filename: "oxford-button-down.jpg", query: "blue oxford button down shirt man formal" },
 ];
 
 async function main() {
@@ -130,7 +132,7 @@ async function main() {
       console.log(`  WARN: no results for "${p.query}"`);
       continue;
     }
-    await download(photos[0].src.large, join(PEOPLE_DIR, p.filename));
+    await download(photos[0].src.large2x, join(PEOPLE_DIR, p.filename));
     await new Promise((r) => setTimeout(r, 300));
   }
 
@@ -141,18 +143,20 @@ async function main() {
       console.log(`  WARN: no results for "${g.query}"`);
       continue;
     }
-    await download(photos[0].src.large, join(GARMENT_DIR, g.filename));
+    await download(photos[0].src.large2x, join(GARMENT_DIR, g.filename));
     await new Promise((r) => setTimeout(r, 300));
   }
 
   console.log("\nSeeding shop product images...");
   for (const s of SHOP_QUERIES) {
-    const photos = await searchPexels(s.query, 1);
+    const photos = await searchPexels(s.query, 5);
     if (photos.length === 0) {
       console.log(`  WARN: no results for "${s.query}"`);
       continue;
     }
-    await download(photos[0].src.large, join(SHOP_DIR, s.filename));
+    const photo = photos[0];
+    console.log(`  Query: "${s.query}" → photo ${photo.id} by ${photo.photographer}`);
+    await download(photo.src.large2x, join(SHOP_DIR, s.filename));
     await new Promise((r) => setTimeout(r, 300));
   }
 
