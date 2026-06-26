@@ -266,6 +266,10 @@ async function main() {
   }
 }
 
+process.on("unhandledRejection", (err) => {
+  console.log("Unhandled rejection (Gradio client):", (err as Error).message?.substring(0, 100));
+});
+
 main().catch((err) => {
   console.error(err);
   process.exit(1);
