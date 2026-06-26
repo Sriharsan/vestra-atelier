@@ -68,8 +68,10 @@ Copy `.env.example` to `.env` and fill in values as needed. No secrets are commi
 | `NODE_ENV` | Yes | `development` or `production` |
 | `VITE_SITE_URL` | For production | Your production URL (e.g. `https://vestra.ai`) |
 | `VITE_TRYON_MODE` | No | `demo` (default) or `live` |
-| `TRYON_API_URL` | For live mode | URL of the rendering API |
-| `TRYON_API_KEY` | For live mode | API key (set in host dashboard, never in code) |
+| `TRYON_PROVIDER` | For live mode | Provider: `gradio`, `fashn`, `fal`, or `none` |
+| `TRYON_API_URL` | For live mode | URL of the rendering API (e.g. `franciszzj/Leffa`) |
+| `TRYON_API_KEY` | For live mode | HuggingFace token or provider API key (server-side only) |
+| `PEXELS_API_KEY` | For seeding | Free key for demo asset script (see `handoff/SEED.md`) |
 | `ANALYTICS_WRITE_KEY` | Optional | PostHog, Segment, or similar |
 | `CRM_WEBHOOK_URL` | Optional | Endpoint for contact form submissions |
 | `SENTRY_DSN` | Optional | Error tracking |
@@ -102,6 +104,7 @@ public/             Static assets (sitemap, manifest, icons, service worker)
 | Route | Description |
 |-------|-------------|
 | `/` | Marketing homepage (11 sections) |
+| `/shop` | Product catalogue (10 pieces, filters, sort) |
 | `/try-on` | Virtual fitting room demo |
 | `/for-brands` | Brand partnership page |
 | `/contact` | Demo request form |
