@@ -30,14 +30,54 @@ interface BakePair {
 }
 
 const PAIRS: BakePair[] = [
-  { person: "woman-1.jpg", garment: "anarkali-suit.jpg", out: "woman-1--anarkali.jpg", category: "dresses" },
-  { person: "woman-2.jpg", garment: "anarkali-suit.jpg", out: "woman-2--anarkali.jpg", category: "dresses" },
-  { person: "woman-1.jpg", garment: "lehenga-choli.jpg", out: "woman-1--lehenga.jpg", category: "dresses" },
-  { person: "woman-2.jpg", garment: "lehenga-choli.jpg", out: "woman-2--lehenga.jpg", category: "dresses" },
-  { person: "woman-1.jpg", garment: "salwar-kameez.jpg", out: "woman-1--salwar.jpg", category: "dresses" },
-  { person: "woman-2.jpg", garment: "salwar-kameez.jpg", out: "woman-2--salwar.jpg", category: "dresses" },
-  { person: "man-1.jpg", garment: "kurta-nehru.jpg", out: "man-1--kurta-nehru.jpg", category: "dresses" },
-  { person: "man-2.jpg", garment: "kurta-nehru.jpg", out: "man-2--kurta-nehru.jpg", category: "dresses" },
+  {
+    person: "woman-1.jpg",
+    garment: "anarkali-suit.jpg",
+    out: "woman-1--anarkali.jpg",
+    category: "dresses",
+  },
+  {
+    person: "woman-2.jpg",
+    garment: "anarkali-suit.jpg",
+    out: "woman-2--anarkali.jpg",
+    category: "dresses",
+  },
+  {
+    person: "woman-1.jpg",
+    garment: "lehenga-choli.jpg",
+    out: "woman-1--lehenga.jpg",
+    category: "dresses",
+  },
+  {
+    person: "woman-2.jpg",
+    garment: "lehenga-choli.jpg",
+    out: "woman-2--lehenga.jpg",
+    category: "dresses",
+  },
+  {
+    person: "woman-1.jpg",
+    garment: "salwar-kameez.jpg",
+    out: "woman-1--salwar.jpg",
+    category: "dresses",
+  },
+  {
+    person: "woman-2.jpg",
+    garment: "salwar-kameez.jpg",
+    out: "woman-2--salwar.jpg",
+    category: "dresses",
+  },
+  {
+    person: "man-1.jpg",
+    garment: "kurta-nehru.jpg",
+    out: "man-1--kurta-nehru.jpg",
+    category: "dresses",
+  },
+  {
+    person: "man-2.jpg",
+    garment: "kurta-nehru.jpg",
+    out: "man-2--kurta-nehru.jpg",
+    category: "dresses",
+  },
   { person: "man-1.jpg", garment: "sherwani.jpg", out: "man-1--sherwani.jpg", category: "dresses" },
   { person: "man-2.jpg", garment: "sherwani.jpg", out: "man-2--sherwani.jpg", category: "dresses" },
 ];
@@ -63,7 +103,8 @@ async function fileToBlob(path: string): Promise<Blob> {
 function extractImageUrl(data: unknown[]): string {
   const first = data[0];
   if (typeof first === "string") return first;
-  if (first && typeof first === "object" && "url" in first) return (first as { url?: string }).url ?? "";
+  if (first && typeof first === "object" && "url" in first)
+    return (first as { url?: string }).url ?? "";
   return "";
 }
 
@@ -168,7 +209,9 @@ async function generateOne(
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       if (attempt > 0) {
         const delay = backoff(attempt);
-        console.log(`  Retrying Leffa in ${(delay / 1000).toFixed(0)}s (attempt ${attempt + 1}/${MAX_RETRIES})...`);
+        console.log(
+          `  Retrying Leffa in ${(delay / 1000).toFixed(0)}s (attempt ${attempt + 1}/${MAX_RETRIES})...`,
+        );
         await wait(delay);
       }
       try {
@@ -192,7 +235,9 @@ async function generateOne(
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     if (attempt > 0) {
       const delay = backoff(attempt);
-      console.log(`  Retrying CatVTON in ${(delay / 1000).toFixed(0)}s (attempt ${attempt + 1}/${MAX_RETRIES})...`);
+      console.log(
+        `  Retrying CatVTON in ${(delay / 1000).toFixed(0)}s (attempt ${attempt + 1}/${MAX_RETRIES})...`,
+      );
       await wait(delay);
     }
     try {

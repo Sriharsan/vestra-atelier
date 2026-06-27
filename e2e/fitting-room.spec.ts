@@ -78,7 +78,9 @@ test.describe("Virtual Fitting Room", () => {
 
     await page.getByRole("button", { name: /Try another/ }).click();
     await expect(page.getByRole("slider")).not.toBeVisible();
-    await expect(page.getByRole("button").filter({ hasText: "Anarkali Suit" }).first()).toBeVisible();
+    await expect(
+      page.getByRole("button").filter({ hasText: "Anarkali Suit" }).first(),
+    ).toBeVisible();
   });
 
   test("privacy notice is visible", async ({ page }) => {
