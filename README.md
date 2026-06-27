@@ -1,19 +1,6 @@
 # Vestra Atelier
 
-A virtual fitting room and marketing site for fashion brands. Shoppers upload a photograph, compose an outfit from a garment catalogue, and see the full look rendered on themselves in seconds.
-
-The try-on on this site runs in demo mode: it uses sample looks and a simulated render pipeline, labeled with a "Preview" badge. A live pilot with real-time AI rendering is a separate scope.
-
-## Highlights
-
-- **Maison design system.** A warm, editorial aesthetic built on a bone-and-saffron palette, Fraunces serif and Inter Tight sans-serif, fabric-like shadows, and iridescent shimmer reserved for AI moments. No dark mode, no glassmorphism, no emoji.
-- **Interactive fitting room.** Choose a shopper (preset or upload), pick garments by category, apply outfit presets (Casual, Professional, Night Out), generate a render, save/share/shop the look. ARIA live region announces render progress; `prefers-reduced-motion` is honoured throughout.
-- **Eleven marketing sections.** Hero, Problem, Solution, How It Works, Lookbook, Stats, For Brands, Integrations, Pricing, FAQ, and a final CTA with newsletter capture.
-- **Legal and privacy.** GDPR and India DPDP privacy policy, terms of service, cookie consent banner that gates analytics, photo retention notice at the upload point.
-- **Security headers.** CSP, HSTS with preload, X-Frame-Options DENY, Permissions-Policy (camera/mic/geo denied), applied to every response.
-- **SEO.** Server-side rendering, JSON-LD structured data (Organization, WebSite, SoftwareApplication), sitemap, OG and Twitter Card meta tags on every page, Lighthouse SEO 100.
-- **Accessibility.** Lighthouse Accessibility 100. Keyboard navigable, skip-to-content link, labelled inputs, descriptive alt text, sufficient contrast ratios.
-- **PWA.** Service worker with offline fallback, web app manifest with SVG icons.
+A virtual fitting room and marketing site for fashion brands. Shoppers upload a photograph, choose a garment from the catalogue, and see a full try-on render composed on themselves.
 
 ## Tech stack
 
@@ -23,118 +10,152 @@ The try-on on this site runs in demo mode: it uses sample looks and a simulated 
 | Build | Vite 8, Nitro |
 | Styling | Tailwind CSS 4, custom Maison design tokens |
 | Components | Radix UI / shadcn/ui primitives, Framer Motion animations |
-| Validation | Zod schemas |
+| Validation | Zod schemas, server-side rate limiting |
 | Language | TypeScript (strict) |
 | Tests | Vitest (unit/integration), Playwright (E2E) |
-| CI | GitHub Actions (typecheck, lint, unit tests, E2E, build) |
-
-## Prerequisites
-
-- Node.js 20 or later
-- npm (ships with Node)
-- For E2E tests: `npx playwright install` to download browser binaries
+| Deployment | Vercel (SSR via Nitro) |
 
 ## Getting started
 
 ```bash
 git clone https://github.com/Sriharsan/vestra-atelier.git
 cd vestra-atelier
+cp .env.example .env
 npm install
 npm run dev
 ```
 
 The dev server starts on **http://localhost:5173**.
 
+### Prerequisites
+
+- Node.js 20+
+- npm (ships with Node)
+- For E2E tests: `npx playwright install chromium`
+
 ## Scripts
 
 | Command | What it does |
 |---------|-------------|
 | `npm run dev` | Start the development server with HMR |
-| `npm run build` | Production build |
-| `npm run preview` | Preview the production build locally |
+| `npm run build` | Production build (Vite + Nitro for Vercel) |
 | `npm run typecheck` | TypeScript strict type check |
-| `npm run lint` | ESLint + Prettier |
-| `npm run format` | Auto-format with Prettier |
-| `npm run test` | Run unit tests (Vitest) |
-| `npm run test:unit` | Same as `test` |
-| `npm run test:e2e` | Run E2E tests (Playwright, headless) |
+| `npm run lint` | ESLint |
+| `npm run test` | Unit tests (Vitest) |
+| `npm run test:e2e` | E2E tests (Playwright, headless Chromium) |
 
-## Environment
+## Routes
 
-Copy `.env.example` to `.env` and fill in values as needed. No secrets are committed to this repository.
+| Route | Description |
+|-------|-------------|
+| `/` | Marketing homepage (Hero, Problem, Solution, How It Works, Lookbook, Stats, For Brands, Integrations, Pricing, FAQ, CTA) |
+| `/shop` | Product catalogue (10 pieces, filters, sort) |
+| `/try-on` | Virtual fitting room with comparison slider |
+| `/for-brands` | Brand partnership page |
+| `/contact` | Demo request form |
+| `/about` | About page |
+| `/cart` | Shopping cart |
+| `/checkout` | Checkout flow |
+| `/privacy` | Privacy policy (GDPR, India DPDP) |
+| `/terms` | Terms of service |
+
+### API routes
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/health` | GET | Health check |
+| `/api/tryon` | POST | Try-on generation (live mode only) |
+| `/api/demo` | GET | Demo catalogue data |
+| `/api/subscribe` | POST | Newsletter subscription |
+| `/api/orders` | POST | Order placement |
+
+## Try-on modes
+
+### Demo mode (default)
+
+Set `VITE_TRYON_MODE=demo` (or leave unset). The fitting room uses 6 pre-baked result images with a simulated rendering animation. No API keys or backend services needed. The 6 looks cover 3 women's Indian outfits (Churidar Kurta, Lehenga Choli, Salwar Kameez) and 2 men's (Kurta with Nehru Jacket, Sherwani).
+
+### Live mode
+
+Set `VITE_TRYON_MODE=live` and configure a try-on provider. The fitting room sends the shopper photo and garment image to the provider API and returns a real-time composite.
+
+Supported providers:
+
+| Provider | Env var | Notes |
+|----------|---------|-------|
+| Gemini | `GEMINI_API_KEY` | Uses `gemini-2.5-flash-image` model. Auto-detected if key is set. Requires billing-enabled Google AI key. |
+| FASHN | `FASHN_API_KEY` | Direct API at fashn.ai |
+| fal.ai | `FAL_KEY` | Runs FASHN model on fal infrastructure |
+| Gradio | `TRYON_API_KEY` | HuggingFace Spaces (e.g. Leffa) |
+
+The `/api/tryon` endpoint enforces rate limiting (10 requests/min, 20 per session) and validates input with Zod.
+
+## Environment variables
+
+Copy `.env.example` to `.env`. No secrets are committed.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `NODE_ENV` | Yes | `development` or `production` |
-| `VITE_SITE_URL` | For production | Your production URL (e.g. `https://vestra.ai`) |
+| `VITE_SITE_URL` | Production | Public URL (e.g. `https://vestra.ai`) |
 | `VITE_TRYON_MODE` | No | `demo` (default) or `live` |
-| `TRYON_PROVIDER` | For live mode | Provider: `gradio`, `fashn`, `fal`, or `none` |
-| `TRYON_API_URL` | For live mode | URL of the rendering API (e.g. `franciszzj/Leffa`) |
-| `TRYON_API_KEY` | For live mode | HuggingFace token or provider API key (server-side only) |
-| `PEXELS_API_KEY` | For seeding | Free key for demo asset script (see `handoff/SEED.md`) |
-| `ANALYTICS_WRITE_KEY` | Optional | PostHog, Segment, or similar |
-| `CRM_WEBHOOK_URL` | Optional | Endpoint for contact form submissions |
+| `TRYON_PROVIDER` | Live mode | `gemini`, `fashn`, `fal`, `gradio`, or `none` |
+| `GEMINI_API_KEY` | Gemini provider | Google AI Studio key (server-side only) |
+| `FASHN_API_KEY` | FASHN provider | fashn.ai API key |
+| `FAL_KEY` | fal provider | fal.ai API key |
+| `TRYON_API_KEY` | Gradio provider | HuggingFace token |
+| `MONGODB_URI` | Optional | MongoDB connection string for form submissions |
+| `PEXELS_API_KEY` | Seeding only | Free key for demo asset script |
+| `ANALYTICS_WRITE_KEY` | Optional | PostHog or Segment key |
+| `CRM_WEBHOOK_URL` | Optional | Contact form webhook |
 | `SENTRY_DSN` | Optional | Error tracking |
 
-All `VITE_`-prefixed variables are public (bundled into the client). Everything else is server-only, read via `src/lib/config.server.ts`.
+All `VITE_`-prefixed variables are bundled into the client. Everything else is server-only, read via `src/lib/config.server.ts`.
 
 ## Project structure
 
 ```
 src/
   routes/           File-based routing (TanStack Router)
-  sections/         Marketing page sections (Hero, Problem, Solution, etc.)
+  sections/         Marketing page sections
   components/       Shared UI (Header, Footer, CookieConsent, StructuredData)
-  components/ui/    shadcn/ui primitives (accordion, button, dialog, etc.)
-  data/             Centralised marketing copy and garment catalogue
-  lib/              Utilities — security headers, validation, rate limiting
-  lib/stubs/        Backend stubs (analytics, auth, forms, storage, try-on)
-  hooks/            Custom React hooks (reduced motion, etc.)
-  assets/           Images
+  components/ui/    shadcn/ui primitives
+  data/             Garment catalogue, try-on catalogue, marketing copy
+  lib/              Security headers, validation, rate limiting, try-on providers
+  lib/stubs/        Client-side stubs (analytics, auth, forms, storage, try-on)
+  hooks/            Custom React hooks
+  assets/           Bundled images
   styles.css        Maison design tokens and utility classes
-  server.ts         SSR entry with security headers and health endpoint
+  server.ts         SSR entry with security headers, API routes, rate limiting
 e2e/                Playwright E2E tests
-handoff/            Client delivery documents
-public/             Static assets (sitemap, manifest, icons, service worker)
-.github/workflows/  CI pipeline
+scripts/            Asset seeding and try-on baking scripts
+public/demo/        Demo assets (people, garments, results, shop images)
 ```
-
-## Pages
-
-| Route | Description |
-|-------|-------------|
-| `/` | Marketing homepage (11 sections) |
-| `/shop` | Product catalogue (10 pieces, filters, sort) |
-| `/try-on` | Virtual fitting room demo |
-| `/for-brands` | Brand partnership page |
-| `/contact` | Demo request form |
-| `/about` | About page |
-| `/privacy` | Privacy policy (GDPR, India DPDP) |
-| `/terms` | Terms of service |
 
 ## Deployment
 
-See `handoff/DEPLOY.md` for the full Vercel deployment runbook, including build settings, environment variables, and domain configuration.
+### Vercel
 
-## Status and roadmap
+1. Import the repository in Vercel.
+2. Framework preset: **Vite**.
+3. Build command: `vite build` (auto-detected).
+4. Set environment variables in the Vercel dashboard:
+   - `VITE_TRYON_MODE=demo`
+   - `VITE_SITE_URL=https://your-domain.com`
+   - Any provider keys for live mode.
+5. Deploy.
 
-This is a **complete demo-mode delivery** (v1.0.0). The try-on uses sample looks with a simulated render pipeline. Five items are deferred with documented reasons and triggers:
+The build outputs to `.vercel/output/` via Nitro's Vercel preset. SSR and static assets are handled automatically.
 
-- CSP `unsafe-inline` — framework constraint (TanStack Start hydration)
-- CSRF tokens — no server form handler exists yet
-- Zod validation / rate limiter not wired to handlers — no server endpoints beyond `/api/health`
-- Live try-on — mocked by design; integrate a real provider when chosen
+## Highlights
 
-The two clear next steps, each a separate scope:
-
-1. **Wire a real try-on provider** — replace the stub in `src/lib/stubs/tryOn.ts` with a real inference endpoint, connect Zod validation and rate limiting to the new handlers, add CSRF protection.
-2. **Storefront** (optional, separate build) — if the client wants to sell directly, that is a new scope covering catalogue, cart, checkout, orders, and payments.
-
-Full details in `SHIP-REPORT.md` and `PHASE-VERIFICATION.md`.
-
-## What the client provides
-
-See `handoff/WHAT-I-NEED-FROM-YOU.md` for the full list: brand assets, real statistics, try-on API credentials, form endpoints, domain, legal review, and more.
+- **Maison design system.** Bone-and-saffron palette, Fraunces serif and Inter Tight sans-serif, fabric-like shadows, iridescent shimmer for try-on moments.
+- **Interactive fitting room.** Choose a person preset or upload your own photo, pick a garment, see the result in a before/after comparison slider. Download, share, or shop the look.
+- **Security headers.** CSP, HSTS with preload, X-Frame-Options DENY, Permissions-Policy (camera/mic/geo denied).
+- **SEO.** Server-side rendering, JSON-LD structured data, sitemap, OG and Twitter Card meta.
+- **Accessibility.** Keyboard navigable, ARIA live region for render progress, labelled inputs, `prefers-reduced-motion` honoured.
+- **PWA.** Service worker with offline fallback, web app manifest.
+- **Legal.** GDPR and India DPDP privacy policy, terms of service, cookie consent banner.
 
 ## Ownership
 
