@@ -33,4 +33,37 @@ test.describe("Shop", () => {
     await page.goto("/shop");
     await expect(page).toHaveTitle(/Shop.*Vestra/);
   });
+
+  test("no console errors on shop page", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (err) => errors.push(err.message));
+
+    await page.goto("/shop");
+    await page.waitForLoadState("networkidle");
+    expect(errors).toEqual([]);
+  });
+});
+
+test.describe("Shop — Mobile", () => {
+  test.use({
+    viewport: { width: 375, height: 812 },
+    isMobile: true,
+  });
+
+  test("shop renders and scrolls on mobile", async ({ page }) => {
+    await page.goto("/shop");
+    await page.waitForLoadState("networkidle");
+
+    await expect(page.getByText("10 pieces")).toBeVisible();
+    await expect(page.getByText("Cream Silk Blouse").first()).toBeVisible();
+  });
+
+  test("no horizontal overflow on mobile shop", async ({ page }) => {
+    await page.goto("/shop");
+    await page.waitForLoadState("networkidle");
+
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+  });
 });
