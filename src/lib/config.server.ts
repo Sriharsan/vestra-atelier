@@ -9,5 +9,6 @@ export function getServerConfig() {
     tryonApiUrl: process.env.TRYON_API_URL,
     tryonApiKey: process.env.TRYON_API_KEY,
     mongodbUri: process.env.MONGODB_URI,
+    geminiApiKey: process.env.GEMINI_API_KEY,
   };
 }

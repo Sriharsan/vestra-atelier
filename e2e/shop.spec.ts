@@ -13,7 +13,7 @@ test.describe("Shop", () => {
     const names = [
       "Cream Silk Blouse",
       "Clay Linen Dress",
-      "Red Anarkali Suit",
+      "Red Churidar Kurta",
       "Banarasi Silk Saree",
       "Pleated Midi Dress",
       "Espresso Double Breasted Blazer",

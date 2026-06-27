@@ -18,7 +18,7 @@ function shopImg(slug: string): ProductImageSet {
 export const productImages: Record<string, ProductImageSet> = {
   "cream-silk-blouse": shopImg("cream-silk-blouse"),
   "clay-linen-dress": shopImg("clay-linen-dress"),
-  "anarkali-red": shopImg("anarkali-red"),
+  "churidar-red": shopImg("churidar-red"),
   "banarasi-saree": shopImg("banarasi-saree"),
   "midi-dress-green": shopImg("midi-dress-green"),
   "espresso-blazer": shopImg("espresso-blazer"),

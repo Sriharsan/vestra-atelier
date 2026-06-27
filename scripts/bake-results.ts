@@ -1,17 +1,17 @@
 /**
- * Generate pre-baked try-on result images using Leffa (full-body dress mode).
+ * Generate pre-baked try-on result images using Gemini image generation.
  *
  * Usage:
- *   Requires TRYON_API_KEY (HF token) in .env or environment.
+ *   Requires GEMINI_API_KEY in .env or environment.
  *   npx tsx scripts/bake-results.ts
  *
  * Saves outputs to public/demo/results/.
- * All five Indian looks use "dresses" category for full outfit replacement.
+ * All looks use full-body dress mode for complete outfit replacement.
  */
 
-import { Client } from "@gradio/client";
+import { GoogleGenAI } from "@google/genai";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import process from "node:process";
 
@@ -20,316 +20,191 @@ const PEOPLE_DIR = join(ROOT, "public", "demo", "people");
 const GARMENT_DIR = join(ROOT, "public", "demo", "garments");
 const RESULTS_DIR = join(ROOT, "public", "demo", "results");
 
-type GarmentCategory = "upper_body" | "lower_body" | "dresses";
+const MODEL = "gemini-2.5-flash-image";
+const MAX_RETRIES = 3;
+const SKIP_EXISTING = process.argv.includes("--skip-existing");
 
 interface BakePair {
   person: string;
   garment: string;
+  garmentName: string;
   out: string;
-  category: GarmentCategory;
 }
 
 const PAIRS: BakePair[] = [
   {
     person: "woman-1.jpg",
-    garment: "anarkali-suit.jpg",
-    out: "woman-1--anarkali.jpg",
-    category: "dresses",
-  },
-  {
-    person: "woman-2.jpg",
-    garment: "anarkali-suit.jpg",
-    out: "woman-2--anarkali.jpg",
-    category: "dresses",
-  },
-  {
-    person: "woman-1.jpg",
-    garment: "lehenga-choli.jpg",
-    out: "woman-1--lehenga.jpg",
-    category: "dresses",
+    garment: "churidar-kurta.jpg",
+    garmentName: "Churidar Kurta",
+    out: "woman-1--churidar.jpg",
   },
   {
     person: "woman-2.jpg",
     garment: "lehenga-choli.jpg",
+    garmentName: "Lehenga Choli",
     out: "woman-2--lehenga.jpg",
-    category: "dresses",
   },
   {
     person: "woman-1.jpg",
     garment: "salwar-kameez.jpg",
+    garmentName: "Salwar Kameez",
     out: "woman-1--salwar.jpg",
-    category: "dresses",
-  },
-  {
-    person: "woman-2.jpg",
-    garment: "salwar-kameez.jpg",
-    out: "woman-2--salwar.jpg",
-    category: "dresses",
   },
   {
     person: "man-1.jpg",
     garment: "kurta-nehru.jpg",
+    garmentName: "Kurta with Nehru Jacket",
     out: "man-1--kurta-nehru.jpg",
-    category: "dresses",
   },
   {
     person: "man-2.jpg",
     garment: "kurta-nehru.jpg",
+    garmentName: "Kurta with Nehru Jacket",
     out: "man-2--kurta-nehru.jpg",
-    category: "dresses",
   },
-  { person: "man-1.jpg", garment: "sherwani.jpg", out: "man-1--sherwani.jpg", category: "dresses" },
-  { person: "man-2.jpg", garment: "sherwani.jpg", out: "man-2--sherwani.jpg", category: "dresses" },
+  {
+    person: "man-1.jpg",
+    garment: "sherwani.jpg",
+    garmentName: "Sherwani",
+    out: "man-1--sherwani.jpg",
+  },
 ];
-
-const PRIMARY_SPACE = "franciszzj/Leffa";
-const FALLBACK_SPACE = "zhengchong/CatVTON";
-const MAX_RETRIES = 4;
-const SKIP_EXISTING = process.argv.includes("--skip-existing");
 
 function wait(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function backoff(attempt: number): number {
-  return Math.min(5000 * Math.pow(2, attempt), 60000);
+function buildPrompt(garmentName: string): string {
+  return `Dress the person in the first image in the outfit from the second image: a full-length traditional Indian ${garmentName}. Cover the body head to toe, modestly and fully draped, and replace all existing clothing including any jeans or trousers. Keep the person's exact face, skin tone, body shape, and pose unchanged. Plain consistent studio background. Photographic, natural, no extra props, no held objects, no text.`;
 }
 
-async function fileToBlob(path: string): Promise<Blob> {
-  const buf = await readFile(path);
-  return new Blob([buf], { type: "image/jpeg" });
-}
-
-function extractImageUrl(data: unknown[]): string {
-  const first = data[0];
-  if (typeof first === "string") return first;
-  if (first && typeof first === "object" && "url" in first)
-    return (first as { url?: string }).url ?? "";
-  return "";
-}
-
-async function downloadImage(url: string): Promise<Buffer | null> {
-  const res = await fetch(url);
-  if (!res.ok) return null;
-  const buf = Buffer.from(await res.arrayBuffer());
-  if (buf.length < 10000) {
-    console.log(`  Warning: result too small (${buf.length} bytes), rejecting`);
-    return null;
-  }
-  return buf;
-}
-
-async function tryLeffa(
-  client: Awaited<ReturnType<typeof Client.connect>>,
-  personPath: string,
-  garmentPath: string,
-  category: GarmentCategory,
-): Promise<Buffer | null> {
-  const personBlob = await fileToBlob(personPath);
-  const garmentBlob = await fileToBlob(garmentPath);
-
-  const result = await client.predict("/leffa_predict_vt", {
-    src_image_path: personBlob,
-    ref_image_path: garmentBlob,
-    ref_acceleration: false,
-    step: 30,
-    scale: 2.5,
-    seed: 42,
-    vt_model_type: "dress_code",
-    vt_garment_type: category,
-    vt_repaint: false,
-  });
-
-  const imageUrl = extractImageUrl(result.data as unknown[]);
-  if (!imageUrl) return null;
-  return downloadImage(imageUrl);
-}
-
-function mapCategoryToCatVTON(cat: GarmentCategory): string {
-  if (cat === "dresses") return "overall";
-  if (cat === "lower_body") return "lower";
-  return "upper";
-}
-
-async function tryCatVTON(
-  token: string | undefined,
-  personPath: string,
-  garmentPath: string,
-  category: GarmentCategory,
-): Promise<Buffer | null> {
-  const client = await Client.connect(FALLBACK_SPACE, {
-    hf_token: token as `hf_${string}` | undefined,
-  });
-
-  const personBlob = await fileToBlob(personPath);
-  const garmentBlob = await fileToBlob(garmentPath);
-
-  const result = await client.predict("/submit_function", [
-    { background: personBlob, layers: [], composite: null },
-    garmentBlob,
-    mapCategoryToCatVTON(category),
-    50,
-    2.5,
-    42,
-    "result only",
-  ]);
-
-  const imageUrl = extractImageUrl(result.data as unknown[]);
-  if (!imageUrl) return null;
-  return downloadImage(imageUrl);
-}
-
-function isQuotaError(msg: string): boolean {
-  return msg.includes("ZeroGPU quota") || msg.includes("exceeded");
-}
-
-function isTransientError(msg: string): boolean {
+function isBillingError(msg: string): boolean {
   return (
-    msg.includes("Connection errored") ||
-    msg.includes("fetch failed") ||
-    msg.includes("queue") ||
-    msg.includes("ETIMEDOUT") ||
-    msg.includes("ECONNRESET") ||
-    msg.includes("503") ||
-    msg.includes("504")
+    msg.includes("billing") ||
+    msg.includes("quota") ||
+    msg.includes("RESOURCE_EXHAUSTED") ||
+    msg.includes("429") ||
+    msg.includes("402")
   );
 }
 
 async function generateOne(
+  ai: InstanceType<typeof GoogleGenAI>,
   pair: BakePair,
-  token: string,
-  leffaClient: Awaited<ReturnType<typeof Client.connect>> | null,
-): Promise<{ buf: Buffer | null; leffaDead: boolean }> {
+): Promise<Buffer | null> {
   const personPath = join(PEOPLE_DIR, pair.person);
   const garmentPath = join(GARMENT_DIR, pair.garment);
-  let leffaDead = false;
 
-  // Try Leffa with retries
-  if (leffaClient) {
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      if (attempt > 0) {
-        const delay = backoff(attempt);
-        console.log(
-          `  Retrying Leffa in ${(delay / 1000).toFixed(0)}s (attempt ${attempt + 1}/${MAX_RETRIES})...`,
-        );
-        await wait(delay);
-      }
-      try {
-        const buf = await tryLeffa(leffaClient, personPath, garmentPath, pair.category);
-        if (buf) return { buf, leffaDead: false };
-        console.log(`  Leffa returned empty result, retrying...`);
-      } catch (err) {
-        const msg = (err as Error).message ?? "";
-        console.log(`  Leffa error: ${msg.substring(0, 150)}`);
-        if (isQuotaError(msg)) {
-          console.log("  ZeroGPU quota exhausted for Leffa.");
-          leffaDead = true;
-          break;
-        }
-        if (!isTransientError(msg) && attempt >= 1) break;
-      }
-    }
-  }
+  const personB64 = (await readFile(personPath)).toString("base64");
+  const garmentB64 = (await readFile(garmentPath)).toString("base64");
 
-  // Try CatVTON with retries
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     if (attempt > 0) {
-      const delay = backoff(attempt);
-      console.log(
-        `  Retrying CatVTON in ${(delay / 1000).toFixed(0)}s (attempt ${attempt + 1}/${MAX_RETRIES})...`,
-      );
+      const delay = Math.min(5000 * Math.pow(2, attempt), 30000);
+      console.log(`  Retry ${attempt + 1}/${MAX_RETRIES} in ${(delay / 1000).toFixed(0)}s...`);
       await wait(delay);
     }
+
     try {
-      const buf = await tryCatVTON(token, personPath, garmentPath, pair.category);
-      if (buf) return { buf, leffaDead };
-      console.log(`  CatVTON returned empty result, retrying...`);
+      const response = await ai.models.generateContent({
+        model: MODEL,
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: buildPrompt(pair.garmentName) },
+              { inlineData: { mimeType: "image/jpeg", data: personB64 } },
+              { inlineData: { mimeType: "image/jpeg", data: garmentB64 } },
+            ],
+          },
+        ],
+        config: {
+          responseModalities: ["IMAGE", "TEXT"],
+        },
+      });
+
+      const parts = response.candidates?.[0]?.content?.parts ?? [];
+      const imagePart = parts.find((p: { inlineData?: { data?: string } }) => p.inlineData?.data);
+
+      if (!imagePart?.inlineData?.data) {
+        const textPart = parts.find((p: { text?: string }) => p.text);
+        console.log(
+          `  No image returned.${textPart?.text ? ` Response: ${(textPart.text as string).substring(0, 150)}` : ""}`,
+        );
+        continue;
+      }
+
+      const buf = Buffer.from(imagePart.inlineData.data, "base64");
+      if (buf.length < 5000) {
+        console.log(`  Image too small (${buf.length} bytes), retrying...`);
+        continue;
+      }
+
+      return buf;
     } catch (err) {
       const msg = (err as Error).message ?? "";
-      console.log(`  CatVTON error: ${msg.substring(0, 150)}`);
-      if (isQuotaError(msg)) {
-        console.log("  ZeroGPU quota exhausted for CatVTON too.");
-        return { buf: null, leffaDead };
+      console.log(`  Gemini error: ${msg.substring(0, 200)}`);
+
+      if (isBillingError(msg)) {
+        console.error("\n  BILLING/QUOTA ERROR — stopping to avoid charges.");
+        process.exit(2);
       }
-      if (!isTransientError(msg) && attempt >= 1) break;
     }
   }
 
-  return { buf: null, leffaDead };
+  return null;
 }
 
 async function main() {
-  const token = process.env.TRYON_API_KEY || undefined;
-  if (!token) {
-    console.error("Set TRYON_API_KEY (HuggingFace token) in environment.");
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.error("Set GEMINI_API_KEY in environment or .env.");
     process.exit(1);
   }
 
   await mkdir(RESULTS_DIR, { recursive: true });
 
-  console.log(`Connecting to ${PRIMARY_SPACE} (full-body dress mode)...`);
-  let leffaClient: Awaited<ReturnType<typeof Client.connect>> | null = null;
-  try {
-    leffaClient = await Client.connect(PRIMARY_SPACE, {
-      hf_token: token as `hf_${string}`,
-    });
-    console.log("Connected to Leffa.");
-  } catch (err) {
-    console.log("Leffa connect failed:", (err as Error).message?.substring(0, 100));
-  }
+  const ai = new GoogleGenAI({ apiKey });
+  console.log(`Using model: ${MODEL}\n`);
 
-  const remaining = new Map<string, BakePair>();
+  const todo: BakePair[] = [];
   for (const pair of PAIRS) {
     if (SKIP_EXISTING) {
       const outPath = join(RESULTS_DIR, pair.out);
-      if (existsSync(outPath)) {
-        const { size } = await import("node:fs").then((fs) => fs.statSync(outPath));
-        if (size > 10000) {
-          console.log(`  SKIP ${pair.out} (${(size / 1024).toFixed(0)} KB, already exists)`);
-          continue;
-        }
+      if (existsSync(outPath) && statSync(outPath).size > 10000) {
+        console.log(`SKIP ${pair.out} (already exists)`);
+        continue;
       }
     }
-    remaining.set(pair.out, pair);
+    todo.push(pair);
   }
 
   let completed = 0;
-  let bothQuotaDead = false;
+  const failed: string[] = [];
 
-  for (const [name, pair] of remaining) {
-    if (bothQuotaDead) break;
+  for (const pair of todo) {
+    console.log(`Generating ${pair.out} (${pair.garmentName})...`);
 
-    console.log(`\nGenerating ${name} (category: ${pair.category})...`);
-    const { buf, leffaDead } = await generateOne(pair, token, leffaClient);
+    const buf = await generateOne(ai, pair);
 
-    if (leffaDead) leffaClient = null;
-
-    if (buf && buf.length > 10000) {
-      const outPath = join(RESULTS_DIR, name);
+    if (buf) {
+      const outPath = join(RESULTS_DIR, pair.out);
       await writeFile(outPath, buf);
-      console.log(`  OK ${name} (${(buf.length / 1024).toFixed(0)} KB) [full-body]`);
-      remaining.delete(name);
+      console.log(`  OK ${pair.out} (${(buf.length / 1024).toFixed(0)} KB)\n`);
       completed++;
     } else {
-      console.log(`  FAILED ${name}`);
-      if (!leffaClient) {
-        bothQuotaDead = true;
-      }
+      console.log(`  FAILED ${pair.out}\n`);
+      failed.push(pair.out);
     }
 
-    await wait(2000);
+    await wait(1500);
   }
 
-  console.log(`\nDone. ${completed}/${PAIRS.length} new results generated.`);
-  if (remaining.size > 0) {
-    console.log(`Incomplete: ${[...remaining.keys()].join(", ")}`);
-    console.log("Re-run when ZeroGPU quota resets.");
+  console.log(`\nDone. ${completed}/${todo.length} generated.`);
+  if (failed.length > 0) {
+    console.log(`Failed: ${failed.join(", ")}`);
   }
 }
-
-process.on("unhandledRejection", (err) => {
-  console.log("Unhandled rejection:", (err as Error).message?.substring(0, 100));
-});
 
 main().catch((err) => {
   console.error(err);

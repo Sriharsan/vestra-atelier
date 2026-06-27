@@ -40,10 +40,10 @@ describe("getLooksByGender", () => {
 });
 
 describe("getLookById", () => {
-  it("finds anarkali by id", () => {
-    const look = getLookById("tryon-anarkali");
+  it("finds churidar by id", () => {
+    const look = getLookById("tryon-churidar");
     expect(look).toBeDefined();
-    expect(look!.name).toBe("Anarkali Suit");
+    expect(look!.name).toBe("Churidar Kurta");
   });
 
   it("returns undefined for unknown id", () => {

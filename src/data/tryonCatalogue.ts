@@ -28,17 +28,16 @@ export const PERSON_PRESETS: PersonPreset[] = [
 
 export const TRYON_LOOKS: TryOnLook[] = [
   {
-    id: "tryon-anarkali",
-    name: "Anarkali Suit",
+    id: "tryon-churidar",
+    name: "Churidar Kurta",
     gender: "women",
-    image: "/demo/garments/anarkali-suit.jpg",
-    shopLink: "/shop?search=anarkali",
-    fabric: "Georgette with thread work",
-    description: "Floor-length flared kali with churidar and dupatta",
+    image: "/demo/garments/churidar-kurta.jpg",
+    shopLink: "/shop?search=churidar",
+    fabric: "Cotton with zari embroidery",
+    description: "Straight-cut kurta with fitted churidar and contrast dupatta",
     garmentCategory: "dresses",
     prebakedResults: {
-      "woman-1": "/demo/results/woman-1--anarkali.jpg",
-      "woman-2": "/demo/results/woman-2--anarkali.jpg",
+      "woman-1": "/demo/results/woman-1--churidar.jpg",
     },
   },
   {
@@ -51,7 +50,6 @@ export const TRYON_LOOKS: TryOnLook[] = [
     description: "Bridal lehenga with embroidered choli and net dupatta",
     garmentCategory: "dresses",
     prebakedResults: {
-      "woman-1": "/demo/results/woman-1--lehenga.jpg",
       "woman-2": "/demo/results/woman-2--lehenga.jpg",
     },
   },
@@ -66,7 +64,6 @@ export const TRYON_LOOKS: TryOnLook[] = [
     garmentCategory: "dresses",
     prebakedResults: {
       "woman-1": "/demo/results/woman-1--salwar.jpg",
-      "woman-2": "/demo/results/woman-2--salwar.jpg",
     },
   },
   {
@@ -94,7 +91,6 @@ export const TRYON_LOOKS: TryOnLook[] = [
     garmentCategory: "dresses",
     prebakedResults: {
       "man-1": "/demo/results/man-1--sherwani.jpg",
-      "man-2": "/demo/results/man-2--sherwani.jpg",
     },
   },
 ];

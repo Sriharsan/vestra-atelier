@@ -81,9 +81,9 @@ const PEOPLE_QUERIES = [
 
 const GARMENT_QUERIES = [
   {
-    filename: "anarkali-suit.jpg",
-    query: "anarkali suit indian fashion flat lay",
-    id: "tryon-anarkali",
+    filename: "churidar-kurta.jpg",
+    query: "churidar kurta set indian women fashion",
+    id: "tryon-churidar",
   },
   {
     filename: "lehenga-choli.jpg",
@@ -110,7 +110,7 @@ const GARMENT_QUERIES = [
 const SHOP_QUERIES = [
   { filename: "cream-silk-blouse.jpg", query: "cream silk blouse elegant women" },
   { filename: "clay-linen-dress.jpg", query: "terracotta brown linen dress woman minimal" },
-  { filename: "anarkali-red.jpg", query: "red suit floral dupatta indian woman" },
+  { filename: "churidar-red.jpg", query: "red churidar kurta dupatta indian woman" },
   { filename: "banarasi-saree.jpg", query: "banarasi silk saree red gold traditional indian" },
   { filename: "midi-dress-green.jpg", query: "turquoise pleated dress woman studio" },
   { filename: "espresso-blazer.jpg", query: "brown double breasted blazer man suit" },

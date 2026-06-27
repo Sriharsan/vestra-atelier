@@ -4,16 +4,17 @@ export interface TryOnProviderResult {
   imageUrl: string;
   durationMs: number;
   confidence: number;
-  provider: "fashn" | "fal" | "gradio" | "mock";
+  provider: "fashn" | "fal" | "gradio" | "gemini" | "mock";
   queued?: boolean;
 }
 
 type FashnCategory = "tops" | "bottoms" | "one-pieces" | "auto";
 type TryOnMode = "tryon" | "edit";
 
-function resolveProvider(): "fashn" | "fal" | "gradio" | "none" {
+function resolveProvider(): "fashn" | "fal" | "gradio" | "gemini" | "none" {
   const v = (process.env.TRYON_PROVIDER ?? "none").toLowerCase();
-  if (v === "fashn" || v === "fal" || v === "gradio") return v;
+  if (v === "fashn" || v === "fal" || v === "gradio" || v === "gemini") return v;
+  if (process.env.GEMINI_API_KEY && v === "none") return "gemini";
   return "none";
 }
 
@@ -271,6 +272,86 @@ async function urlOrBase64ToBlob(input: string): Promise<Blob> {
   return new Blob([buf], { type: "image/jpeg" });
 }
 
+function buildTryOnPrompt(garmentName?: string): string {
+  const name = garmentName ?? "traditional Indian outfit";
+  return `Dress the person in the first image in the outfit from the second image: a full-length traditional Indian ${name}. Cover the body head to toe, modestly and fully draped, and replace all existing clothing including any jeans or trousers. Keep the person's exact face, skin tone, body shape, and pose unchanged. Plain consistent studio background. Photographic, natural, no extra props, no held objects, no text.`;
+}
+
+async function runGemini(
+  personImage: string,
+  garmentImage: string,
+  garmentName?: string,
+): Promise<TryOnProviderResult> {
+  const { GoogleGenAI } = await import("@google/genai");
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY not set");
+
+  const ai = new GoogleGenAI({ apiKey });
+  const start = Date.now();
+
+  const personData = await imageToBase64(personImage);
+  const garmentData = await imageToBase64(garmentImage);
+
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash-image",
+    contents: [
+      {
+        role: "user",
+        parts: [
+          { text: buildTryOnPrompt(garmentName) },
+          { inlineData: { mimeType: "image/jpeg", data: personData } },
+          { inlineData: { mimeType: "image/jpeg", data: garmentData } },
+        ],
+      },
+    ],
+    config: {
+      responseModalities: ["IMAGE", "TEXT"],
+    },
+  });
+
+  const parts = response.candidates?.[0]?.content?.parts ?? [];
+  const imagePart = parts.find(
+    (p: { inlineData?: { mimeType?: string; data?: string } }) => p.inlineData?.data,
+  );
+
+  if (!imagePart?.inlineData?.data) {
+    const textPart = parts.find((p: { text?: string }) => p.text);
+    throw new Error(
+      `Gemini returned no image. ${textPart?.text ? `Response: ${(textPart.text as string).substring(0, 200)}` : "Empty response."}`,
+    );
+  }
+
+  const mime = imagePart.inlineData.mimeType ?? "image/png";
+  const dataUrl = `data:${mime};base64,${imagePart.inlineData.data}`;
+
+  return {
+    imageUrl: dataUrl,
+    durationMs: Date.now() - start,
+    confidence: 0.92,
+    provider: "gemini",
+  };
+}
+
+async function imageToBase64(input: string): Promise<string> {
+  if (input.startsWith("data:")) {
+    return input.split(",")[1];
+  }
+  if (input.startsWith("http://") || input.startsWith("https://") || input.startsWith("/")) {
+    let url = input;
+    if (input.startsWith("/")) {
+      url = `file://${input}`;
+      const { readFile } = await import("node:fs/promises");
+      const buf = await readFile(input.startsWith("/") ? input : new URL(url));
+      return buf.toString("base64");
+    }
+    const res = await fetch(url);
+    const buf = Buffer.from(await res.arrayBuffer());
+    return buf.toString("base64");
+  }
+  return input;
+}
+
 async function runMock(): Promise<TryOnProviderResult> {
   await new Promise((r) => setTimeout(r, 1500));
   return { imageUrl: "", durationMs: 1400, confidence: 0.97, provider: "mock" };
@@ -288,9 +369,11 @@ export async function generateTryOn(
   if (provider === "fashn") return runFashn(personImage, garmentImage, category, mode, instruction);
   if (provider === "fal") return runFal(personImage, garmentImage, category, mode, instruction);
   if (provider === "gradio" && garmentImage) return runGradio(personImage, garmentImage, category);
+  if (provider === "gemini" && garmentImage)
+    return runGemini(personImage, garmentImage, instruction);
   return runMock();
 }
 
-export function getProviderName(): "fashn" | "fal" | "gradio" | "none" {
+export function getProviderName(): "fashn" | "fal" | "gradio" | "gemini" | "none" {
   return resolveProvider();
 }

@@ -141,6 +141,7 @@ export function TryOnDemo({ initialGarmentId }: { initialGarmentId?: string } = 
         personImage: personB64,
         garmentImage: selectedLook.image,
         garmentId: selectedLook.id,
+        garmentName: selectedLook.name,
         category: selectedLook.garmentCategory,
       },
       prebaked,

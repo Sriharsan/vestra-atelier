@@ -22,19 +22,19 @@ test.describe("Virtual Fitting Room", () => {
   });
 
   test("gender toggle filters looks", async ({ page }) => {
-    await expect(page.getByText("Anarkali Suit")).toBeVisible();
+    await expect(page.getByText("Churidar Kurta")).toBeVisible();
     await expect(page.getByText("Lehenga Choli")).toBeVisible();
 
     await page.getByRole("radio", { name: "Men", exact: true }).click();
     await expect(page.getByText("Sherwani")).toBeVisible();
     await expect(page.getByText("Kurta with Nehru Jacket")).toBeVisible();
-    await expect(page.getByText("Anarkali Suit")).not.toBeVisible();
+    await expect(page.getByText("Churidar Kurta")).not.toBeVisible();
   });
 
   test("demo try-on flow completes with comparison slider", async ({ page }) => {
-    const anarkaliBtn = page.getByRole("button").filter({ hasText: "Anarkali Suit" }).first();
-    await anarkaliBtn.click();
-    await expect(anarkaliBtn).toHaveAttribute("aria-pressed", "true");
+    const churidarBtn = page.getByRole("button").filter({ hasText: "Churidar Kurta" }).first();
+    await churidarBtn.click();
+    await expect(churidarBtn).toHaveAttribute("aria-pressed", "true");
 
     await page.locator("button.btn-saffron").click();
 
@@ -51,7 +51,7 @@ test.describe("Virtual Fitting Room", () => {
   });
 
   test("result actions appear after render", async ({ page }) => {
-    await page.getByRole("button").filter({ hasText: "Anarkali Suit" }).first().click();
+    await page.getByRole("button").filter({ hasText: "Churidar Kurta" }).first().click();
     await page.locator("button.btn-saffron").click();
     await expect(page.getByText("Your look is ready.")).toBeVisible({ timeout: 10_000 });
 
@@ -62,7 +62,7 @@ test.describe("Virtual Fitting Room", () => {
   });
 
   test("reset clears result and selection", async ({ page }) => {
-    await page.getByRole("button").filter({ hasText: "Anarkali Suit" }).first().click();
+    await page.getByRole("button").filter({ hasText: "Churidar Kurta" }).first().click();
     await page.locator("button.btn-saffron").click();
     await expect(page.getByText("Your look is ready.")).toBeVisible({ timeout: 10_000 });
 
@@ -72,14 +72,14 @@ test.describe("Virtual Fitting Room", () => {
   });
 
   test("try another clears result but keeps selection", async ({ page }) => {
-    await page.getByRole("button").filter({ hasText: "Anarkali Suit" }).first().click();
+    await page.getByRole("button").filter({ hasText: "Churidar Kurta" }).first().click();
     await page.locator("button.btn-saffron").click();
     await expect(page.getByText("Your look is ready.")).toBeVisible({ timeout: 10_000 });
 
     await page.getByRole("button", { name: /Try another/ }).click();
     await expect(page.getByRole("slider")).not.toBeVisible();
     await expect(
-      page.getByRole("button").filter({ hasText: "Anarkali Suit" }).first(),
+      page.getByRole("button").filter({ hasText: "Churidar Kurta" }).first(),
     ).toBeVisible();
   });
 
@@ -111,7 +111,7 @@ test.describe("Virtual Fitting Room", () => {
   });
 
   test("keyboard navigates comparison slider", async ({ page }) => {
-    await page.getByRole("button").filter({ hasText: "Anarkali Suit" }).first().click();
+    await page.getByRole("button").filter({ hasText: "Churidar Kurta" }).first().click();
     await page.locator("button.btn-saffron").click();
     await expect(page.getByText("Your look is ready.")).toBeVisible({ timeout: 10_000 });
 
@@ -130,7 +130,7 @@ test.describe("Virtual Fitting Room", () => {
     const liveRegion = page.locator("[aria-live='polite']");
     await expect(liveRegion).toContainText("Ready to try on.");
 
-    await page.getByRole("button").filter({ hasText: "Anarkali Suit" }).first().click();
+    await page.getByRole("button").filter({ hasText: "Churidar Kurta" }).first().click();
     await page.locator("button.btn-saffron").click();
 
     await expect(liveRegion).toContainText("Your look is ready.", { timeout: 10_000 });
@@ -143,7 +143,7 @@ test.describe("Virtual Fitting Room", () => {
     await page.goto("/try-on");
     await page.waitForLoadState("networkidle");
 
-    await page.getByRole("button").filter({ hasText: "Anarkali Suit" }).first().click();
+    await page.getByRole("button").filter({ hasText: "Churidar Kurta" }).first().click();
     await page.locator("button.btn-saffron").click();
     await expect(page.getByText("Your look is ready.")).toBeVisible({ timeout: 10_000 });
 
@@ -183,7 +183,7 @@ test.describe("Virtual Fitting Room — Mobile", () => {
     await page.goto("/try-on");
     await page.waitForLoadState("networkidle");
 
-    await page.getByRole("button").filter({ hasText: "Anarkali Suit" }).first().click();
+    await page.getByRole("button").filter({ hasText: "Churidar Kurta" }).first().click();
     await page.locator("button.btn-saffron").click();
     await expect(page.getByText("Your look is ready.")).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText("Demo preview")).toBeVisible();
