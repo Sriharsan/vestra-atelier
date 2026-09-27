@@ -84,12 +84,11 @@ function PrivacyPage() {
 
             <SectionHeading>How we process photographs</SectionHeading>
             <p className="mt-4">
-              Your photograph is processed exclusively within your active session to render the
-              virtual fitting result. We do not store photographs beyond the duration of the
-              session. We do not use your photographs to train, fine-tune, or improve any
-              machine-learning model. Once you close the fitting-room session or navigate away, the
-              image data is discarded. If our infrastructure caches the image transiently for
-              rendering purposes, that cache is cleared within 60 minutes at most.
+              In demo mode, your photograph stays in your browser. In live mode, the photograph and
+              selected garment image are sent through our server to the configured image provider to
+              generate a result. Our application does not save the photograph in its database.
+              Provider processing, retention, and training practices depend on the provider and its
+              current policies. Review those policies before enabling live mode.
             </p>
 
             <SectionHeading>Your rights under the GDPR</SectionHeading>
@@ -150,10 +149,10 @@ function PrivacyPage() {
 
             <SectionHeading>Data retention</SectionHeading>
             <p className="mt-4">
-              Shopper photographs are retained only for the duration of the active session, never
-              longer than 60 minutes. Contact-form submissions are retained for up to 24 months to
-              facilitate ongoing business conversations. Analytics data is retained in anonymised,
-              aggregated form for up to 36 months.
+              Our application does not save shopper photographs in its database. Live image
+              providers may retain request data under their own policies. Contact-form submissions
+              are retained for up to 24 months to facilitate ongoing business conversations.
+              Analytics data is retained in anonymised, aggregated form for up to 36 months.
             </p>
 
             <SectionHeading>Contact</SectionHeading>

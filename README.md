@@ -93,6 +93,8 @@ The `/api/tryon` endpoint enforces rate limiting (10 requests/min, 20 per sessio
 
 For the low-cost live setup, set `VITE_TRYON_MODE=live`, `TRYON_PROVIDER=openrouter`, and a separate company `VESTRA_OPENROUTER_API_KEY` in the server environment. A generic `OPENROUTER_API_KEY` is ignored. `OPENROUTER_TRYON_MODEL` can override the default after comparing output quality and current prices. Each successful live render incurs provider charges. IDM-VTON's official code and checkpoints are under a non-commercial license, so they are not used for this commercial fitting room.
 
+Live results preserve the input photo's pose and crop where the model can. Partial photos show only the visible garment area; fast motion, heavy occlusion, and unseen garment details are best effort. Check results with a separate company key before promising accuracy for these cases.
+
 ## Environment variables
 
 Copy `.env.example` to `.env`. No secrets are committed.

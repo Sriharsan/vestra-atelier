@@ -29,6 +29,9 @@ describe("OpenRouter try-on provider", () => {
     expect(options.headers).toMatchObject({ Authorization: "Bearer company-test-key" });
     const body = JSON.parse(options.body as string);
     expect(body.model).toBe("black-forest-labs/flux.2-klein-4b");
+    expect(body.aspect_ratio).toBe("auto");
+    expect(body.prompt).toContain("keep the same crop");
+    expect(body.prompt).toContain("exact pose and activity");
     expect(body.input_references).toHaveLength(2);
     expect(body.input_references[0].image_url.url).toBe(image);
     expect(body.input_references[1].image_url.url).toBe(image);

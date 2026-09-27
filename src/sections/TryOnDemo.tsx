@@ -242,8 +242,8 @@ export function TryOnDemo({ initialGarmentId }: { initialGarmentId?: string } = 
           Upload your photo, <span className="italic text-saffron-deep">try it on.</span>
         </h2>
         <p className="mt-3 max-w-lg text-sm text-ink-soft">
-          Pick a person, choose a look, and see how it fits. In demo mode, your photo stays in your
-          browser.
+          Pick a person, choose a look, and see a preview. Clear photos with the clothing area
+          visible work best. In demo mode, your photo stays in your browser.
         </p>
       </div>
 
@@ -605,9 +605,9 @@ export function TryOnDemo({ initialGarmentId }: { initialGarmentId?: string } = 
 
           {/* Privacy note */}
           <p className="mt-6 max-w-md text-[11px] text-ink-soft/70">
-            Results are AI-generated previews. Your photograph stays in your browser during demo
-            mode. In production, images are processed in-session, retained briefly for quality, then
-            permanently deleted. Never used for training.
+            Results are generated previews. In demo mode, your photograph stays in your browser. In
+            live mode, your photo is sent to the selected image provider to generate the result. See
+            our Privacy Policy for details.
           </p>
         </div>
       </div>

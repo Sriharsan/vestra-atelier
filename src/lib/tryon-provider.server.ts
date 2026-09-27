@@ -60,7 +60,7 @@ async function runOpenRouter(
       model: process.env.OPENROUTER_TRYON_MODEL || "black-forest-labs/flux.2-klein-4b",
       prompt: buildTryOnPrompt(garmentName),
       n: 1,
-      aspect_ratio: "3:4",
+      aspect_ratio: "auto",
       output_format: "jpeg",
       input_references: [person, garment].map((url) => ({
         type: "image_url",
@@ -341,8 +341,8 @@ async function urlOrBase64ToBlob(input: string): Promise<Blob> {
 }
 
 function buildTryOnPrompt(garmentName?: string): string {
-  const name = garmentName ?? "traditional Indian outfit";
-  return `Dress the person in the first image in the outfit from the second image: a full-length traditional Indian ${name}. Cover the body head to toe, modestly and fully draped, and replace all existing clothing including any jeans or trousers. Keep the person's exact face, skin tone, body shape, and pose unchanged. Plain consistent studio background. Photographic, natural, no extra props, no held objects, no text.`;
+  const name = garmentName ?? "garment";
+  return `Edit the FIRST reference photograph of a person so they wear the ${name} shown in the SECOND reference image. This is a realistic virtual clothing try-on, not a new portrait. Preserve the person's identity, face, skin tone, body proportions, exact pose and activity, camera angle, framing, and original background. If the person is seated, leaning, walking, running, or viewed from the side, fit the garment naturally to that visible pose with plausible folds and drape. If the photo shows only part of the body, keep the same crop and render only the visible portion of the garment; do not invent unseen limbs or extend the frame. Preserve natural occlusion by arms, hands, hair, and objects in front of the body. Match the garment's actual cut, color, pattern, embroidery, and layers from the second reference. Replace only the clothing that the garment covers; retain other visible clothing, accessories, and surroundings. Photorealistic image, no text or added props.`;
 }
 
 async function runGemini(
