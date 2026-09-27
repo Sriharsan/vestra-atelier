@@ -54,6 +54,14 @@ export async function* runTryOn(
   yield { kind: "uploading", progress: 100 };
 
   if (!isLive) {
+    if (!prebakedUrl) {
+      yield {
+        kind: "error",
+        message:
+          "This photo needs live try-on. Choose a preset demo, or enable a company provider key.",
+      };
+      return;
+    }
     const totalMs = 2000;
     const start = Date.now();
     while (Date.now() - start < totalMs) {
@@ -66,7 +74,7 @@ export async function* runTryOn(
     yield {
       kind: "done",
       result: {
-        imageUrl: prebakedUrl ?? req.personImage,
+        imageUrl: prebakedUrl,
         durationMs: 2000,
         confidence: 0.97,
         provider: "demo",

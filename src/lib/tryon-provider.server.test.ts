@@ -7,6 +7,16 @@ afterEach(() => {
 });
 
 describe("OpenRouter try-on provider", () => {
+  it("never auto-selects a provider from an existing personal key", async () => {
+    vi.stubEnv("TRYON_PROVIDER", "none");
+    vi.stubEnv("GEMINI_API_KEY", "personal-test-key");
+    vi.stubEnv("OPENROUTER_API_KEY", "personal-test-key");
+    expect(getProviderName()).toBe("none");
+    await expect(generateTryOn("photo", "garment")).rejects.toThrow(
+      "explicitly configured provider",
+    );
+  });
+
   it("uses two image references and returns the generated image", async () => {
     vi.stubEnv("TRYON_PROVIDER", "openrouter");
     vi.stubEnv("VESTRA_OPENROUTER_API_KEY", "company-test-key");

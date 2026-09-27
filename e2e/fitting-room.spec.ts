@@ -110,6 +110,16 @@ test.describe("Virtual Fitting Room", () => {
     await expect(page.getByAltText("Your upload")).toBeVisible();
   });
 
+  test("custom uploads do not claim a demo try-on result", async ({ page }) => {
+    const peoplePath = resolve(__dirname, "../public/demo/people/woman-1.jpg");
+    await page.locator('input[type="file"]').setInputFiles(peoplePath);
+    await page.getByRole("button").filter({ hasText: "Churidar Kurta" }).first().click();
+    await page.locator("button.btn-saffron").click();
+
+    await expect(page.getByRole("alert").getByText(/This photo needs live try-on/)).toBeVisible();
+    await expect(page.getByText("Your look is ready.")).not.toBeVisible();
+  });
+
   test("keyboard navigates comparison slider", async ({ page }) => {
     await page.getByRole("button").filter({ hasText: "Churidar Kurta" }).first().click();
     await page.locator("button.btn-saffron").click();

@@ -26,8 +26,17 @@ import {
 import { runTryOn, type TryOnStage, type TryOnResult } from "@/lib/stubs/tryOn";
 import { track } from "@/lib/stubs/analytics";
 
-const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_FILE_SIZE = 8 * 1024 * 1024;
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Could not read the uploaded image"));
+    reader.readAsDataURL(file);
+  });
+}
 
 export function TryOnDemo({ initialGarmentId }: { initialGarmentId?: string } = {}) {
   const reduced = useReducedMotion();
@@ -81,7 +90,7 @@ export function TryOnDemo({ initialGarmentId }: { initialGarmentId?: string } = 
 
   function handleFileSelect(file: File) {
     setUploadError(null);
-    if (!ACCEPTED_TYPES.includes(file.type) && !file.name.toLowerCase().endsWith(".heic")) {
+    if (!ACCEPTED_TYPES.includes(file.type)) {
       setUploadError("Upload a JPG, PNG, or WebP image.");
       return;
     }
@@ -125,9 +134,12 @@ export function TryOnDemo({ initialGarmentId }: { initialGarmentId?: string } = 
 
     let personB64 = personSrc;
     if (uploadedFile) {
-      const buf = await uploadedFile.arrayBuffer();
-      const b64 = btoa(new Uint8Array(buf).reduce((s, b) => s + String.fromCharCode(b), ""));
-      personB64 = `data:${uploadedFile.type};base64,${b64}`;
+      try {
+        personB64 = await fileToDataUrl(uploadedFile);
+      } catch {
+        setStage({ kind: "error", message: "Could not read the uploaded image" });
+        return;
+      }
     }
 
     const presetId = personPresetId;
@@ -378,7 +390,7 @@ export function TryOnDemo({ initialGarmentId }: { initialGarmentId?: string } = 
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                accept="image/jpeg,image/png,image/webp"
                 className="sr-only"
                 onChange={onFileChange}
                 aria-label="Upload your photograph"

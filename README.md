@@ -73,7 +73,7 @@ The dev server starts on **http://localhost:5173**.
 
 ### Demo mode (default)
 
-Set `VITE_TRYON_MODE=demo` (or leave unset). The fitting room uses 6 pre-baked result images with a simulated rendering animation. No API keys or backend services needed. The 6 looks cover 3 women's Indian outfits (Churidar Kurta, Lehenga Choli, Salwar Kameez) and 2 men's (Kurta with Nehru Jacket, Sherwani).
+Set `VITE_TRYON_MODE=demo` (or leave unset). The fitting room uses 6 pre-baked result images with a simulated rendering animation. No API keys or backend services needed. The 6 looks cover 3 women's Indian outfits (Churidar Kurta, Lehenga Choli, Salwar Kameez) and 2 men's (Kurta with Nehru Jacket, Sherwani). Uploaded photos require live mode; demo mode never presents an unchanged upload as a generated try-on.
 
 ### Live mode
 
@@ -84,7 +84,7 @@ Supported providers:
 | Provider | Env var | Notes |
 |----------|---------|-------|
 | OpenRouter | `VESTRA_OPENROUTER_API_KEY` | Default: `black-forest-labs/flux.2-klein-4b`, a low-cost two-reference image model. Must be selected explicitly. |
-| Gemini | `GEMINI_API_KEY` | Uses `gemini-2.5-flash-image` model. Auto-detected if key is set. Requires billing-enabled Google AI key. |
+| Gemini | `GEMINI_API_KEY` | Uses `gemini-2.5-flash-image` model only when selected explicitly. Requires billing-enabled Google AI key. |
 | FASHN | `FASHN_API_KEY` | Direct API at fashn.ai |
 | fal.ai | `FAL_KEY` | Runs FASHN model on fal infrastructure |
 | Gradio | `TRYON_API_KEY` | HuggingFace Spaces (e.g. Leffa) |

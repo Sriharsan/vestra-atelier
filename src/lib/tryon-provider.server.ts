@@ -17,7 +17,6 @@ function resolveProvider(): "fashn" | "fal" | "gradio" | "gemini" | "openrouter"
   const v = (process.env.TRYON_PROVIDER ?? "none").toLowerCase();
   if (v === "fashn" || v === "fal" || v === "gradio" || v === "gemini" || v === "openrouter")
     return v;
-  if (process.env.GEMINI_API_KEY && v === "none") return "gemini";
   return "none";
 }
 
@@ -420,11 +419,6 @@ async function imageToBase64(input: string): Promise<string> {
   return input;
 }
 
-async function runMock(): Promise<TryOnProviderResult> {
-  await new Promise((r) => setTimeout(r, 1500));
-  return { imageUrl: "", durationMs: 1400, confidence: 0.97, provider: "mock" };
-}
-
 export async function generateTryOn(
   personImage: string,
   garmentImage: string | undefined,
@@ -441,7 +435,7 @@ export async function generateTryOn(
   if (provider === "gradio" && garmentImage) return runGradio(personImage, garmentImage, category);
   if (provider === "gemini" && garmentImage)
     return runGemini(personImage, garmentImage, instruction);
-  return runMock();
+  throw new Error("Live try-on requires an explicitly configured provider and garment image");
 }
 
 export function getProviderName(): "fashn" | "fal" | "gradio" | "gemini" | "openrouter" | "none" {
