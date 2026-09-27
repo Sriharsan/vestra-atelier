@@ -77,18 +77,21 @@ Set `VITE_TRYON_MODE=demo` (or leave unset). The fitting room uses 6 pre-baked r
 
 ### Live mode
 
-Set `VITE_TRYON_MODE=live` and configure a try-on provider. The fitting room sends the shopper photo and garment image to the provider API and returns a real-time composite.
+Set `VITE_TRYON_MODE=live` and configure a try-on provider. The fitting room sends the shopper photo and garment image to the provider API and returns a real-time composite. Preset pairs also use the live provider in this mode.
 
 Supported providers:
 
 | Provider | Env var | Notes |
 |----------|---------|-------|
+| OpenRouter | `VESTRA_OPENROUTER_API_KEY` | Default: `black-forest-labs/flux.2-klein-4b`, a low-cost two-reference image model. Must be selected explicitly. |
 | Gemini | `GEMINI_API_KEY` | Uses `gemini-2.5-flash-image` model. Auto-detected if key is set. Requires billing-enabled Google AI key. |
 | FASHN | `FASHN_API_KEY` | Direct API at fashn.ai |
 | fal.ai | `FAL_KEY` | Runs FASHN model on fal infrastructure |
 | Gradio | `TRYON_API_KEY` | HuggingFace Spaces (e.g. Leffa) |
 
 The `/api/tryon` endpoint enforces rate limiting (10 requests/min, 20 per session) and validates input with Zod.
+
+For the low-cost live setup, set `VITE_TRYON_MODE=live`, `TRYON_PROVIDER=openrouter`, and a separate company `VESTRA_OPENROUTER_API_KEY` in the server environment. A generic `OPENROUTER_API_KEY` is ignored. `OPENROUTER_TRYON_MODEL` can override the default after comparing output quality and current prices. Each successful live render incurs provider charges. IDM-VTON's official code and checkpoints are under a non-commercial license, so they are not used for this commercial fitting room.
 
 ## Environment variables
 
@@ -99,7 +102,9 @@ Copy `.env.example` to `.env`. No secrets are committed.
 | `NODE_ENV` | Yes | `development` or `production` |
 | `VITE_SITE_URL` | Production | Public URL (e.g. `https://vestra.ai`) |
 | `VITE_TRYON_MODE` | No | `demo` (default) or `live` |
-| `TRYON_PROVIDER` | Live mode | `gemini`, `fashn`, `fal`, `gradio`, or `none` |
+| `TRYON_PROVIDER` | Live mode | `openrouter`, `gemini`, `fashn`, `fal`, `gradio`, or `none` |
+| `VESTRA_OPENROUTER_API_KEY` | OpenRouter provider | Server-side company OpenRouter key; personal keys must not be used |
+| `OPENROUTER_TRYON_MODEL` | No | Defaults to `black-forest-labs/flux.2-klein-4b` |
 | `GEMINI_API_KEY` | Gemini provider | Google AI Studio key (server-side only) |
 | `FASHN_API_KEY` | FASHN provider | fashn.ai API key |
 | `FAL_KEY` | fal provider | fal.ai API key |

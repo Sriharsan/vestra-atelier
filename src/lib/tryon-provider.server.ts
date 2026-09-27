@@ -1,21 +1,89 @@
 import process from "node:process";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
 export interface TryOnProviderResult {
   imageUrl: string;
   durationMs: number;
   confidence: number;
-  provider: "fashn" | "fal" | "gradio" | "gemini" | "mock";
+  provider: "fashn" | "fal" | "gradio" | "gemini" | "openrouter" | "mock";
   queued?: boolean;
 }
 
 type FashnCategory = "tops" | "bottoms" | "one-pieces" | "auto";
 type TryOnMode = "tryon" | "edit";
 
-function resolveProvider(): "fashn" | "fal" | "gradio" | "gemini" | "none" {
+function resolveProvider(): "fashn" | "fal" | "gradio" | "gemini" | "openrouter" | "none" {
   const v = (process.env.TRYON_PROVIDER ?? "none").toLowerCase();
-  if (v === "fashn" || v === "fal" || v === "gradio" || v === "gemini") return v;
+  if (v === "fashn" || v === "fal" || v === "gradio" || v === "gemini" || v === "openrouter")
+    return v;
   if (process.env.GEMINI_API_KEY && v === "none") return "gemini";
   return "none";
+}
+
+async function openRouterReference(input: string): Promise<string> {
+  if (/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(input)) return input;
+  if (/^https:\/\//.test(input)) return input;
+  // Preset images are site-relative; the external API cannot fetch those paths.
+  if (/^\/demo\/(people|garments)\/[\w-]+\.(jpg|jpeg|png|webp)$/.test(input)) {
+    const bytes = await readFile(join(process.cwd(), "public", input.slice(1)));
+    const mime = input.endsWith(".png")
+      ? "image/png"
+      : input.endsWith(".webp")
+        ? "image/webp"
+        : "image/jpeg";
+    return `data:${mime};base64,${bytes.toString("base64")}`;
+  }
+  throw new Error("Unsupported try-on image reference");
+}
+
+async function runOpenRouter(
+  personImage: string,
+  garmentImage: string,
+  garmentName?: string,
+): Promise<TryOnProviderResult> {
+  const apiKey = process.env.VESTRA_OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error("VESTRA_OPENROUTER_API_KEY not set");
+
+  const start = Date.now();
+  const [person, garment] = await Promise.all([
+    openRouterReference(personImage),
+    openRouterReference(garmentImage),
+  ]);
+  const response = await fetch("https://openrouter.ai/api/v1/images", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: process.env.OPENROUTER_TRYON_MODEL || "black-forest-labs/flux.2-klein-4b",
+      prompt: buildTryOnPrompt(garmentName),
+      n: 1,
+      aspect_ratio: "3:4",
+      output_format: "jpeg",
+      input_references: [person, garment].map((url) => ({
+        type: "image_url",
+        image_url: { url },
+      })),
+    }),
+    signal: AbortSignal.timeout(120_000),
+  });
+  if (!response.ok) {
+    throw new Error(`OpenRouter image request failed (${response.status})`);
+  }
+
+  const result = (await response.json()) as {
+    data?: { b64_json?: string; media_type?: string }[];
+  };
+  const image = result.data?.[0];
+  if (!image?.b64_json) throw new Error("OpenRouter returned no image");
+  return {
+    imageUrl: `data:${image.media_type ?? "image/jpeg"};base64,${image.b64_json}`,
+    durationMs: Date.now() - start,
+    confidence: 0.9,
+    provider: "openrouter",
+  };
 }
 
 async function runFashn(
@@ -366,6 +434,8 @@ export async function generateTryOn(
 ): Promise<TryOnProviderResult> {
   const provider = resolveProvider();
 
+  if (provider === "openrouter" && garmentImage)
+    return runOpenRouter(personImage, garmentImage, instruction);
   if (provider === "fashn") return runFashn(personImage, garmentImage, category, mode, instruction);
   if (provider === "fal") return runFal(personImage, garmentImage, category, mode, instruction);
   if (provider === "gradio" && garmentImage) return runGradio(personImage, garmentImage, category);
@@ -374,6 +444,6 @@ export async function generateTryOn(
   return runMock();
 }
 
-export function getProviderName(): "fashn" | "fal" | "gradio" | "gemini" | "none" {
+export function getProviderName(): "fashn" | "fal" | "gradio" | "gemini" | "openrouter" | "none" {
   return resolveProvider();
 }

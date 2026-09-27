@@ -10,5 +10,7 @@ export function getServerConfig() {
     tryonApiKey: process.env.TRYON_API_KEY,
     mongodbUri: process.env.MONGODB_URI,
     geminiApiKey: process.env.GEMINI_API_KEY,
+    openRouterApiKey: process.env.VESTRA_OPENROUTER_API_KEY,
+    openRouterTryonModel: process.env.OPENROUTER_TRYON_MODEL,
   };
 }

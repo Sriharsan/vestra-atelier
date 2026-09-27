@@ -30,6 +30,19 @@ function wait(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+async function liveImageReference(image: string): Promise<string> {
+  if (!image.startsWith("/demo/")) return image;
+  const response = await fetch(image);
+  if (!response.ok) throw new Error("Could not load the try-on image");
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Could not read the try-on image"));
+    reader.readAsDataURL(blob);
+  });
+}
+
 export async function* runTryOn(
   req: TryOnRequest,
   prebakedUrl?: string,
@@ -40,7 +53,7 @@ export async function* runTryOn(
   await wait(200);
   yield { kind: "uploading", progress: 100 };
 
-  if (!isLive || prebakedUrl) {
+  if (!isLive) {
     const totalMs = 2000;
     const start = Date.now();
     while (Date.now() - start < totalMs) {
@@ -66,12 +79,16 @@ export async function* runTryOn(
   yield { kind: "rendering", progress: 5, etaMs: 30000 };
 
   try {
+    const [shopperImage, garmentImage] = await Promise.all([
+      liveImageReference(req.personImage),
+      liveImageReference(req.garmentImage),
+    ]);
     const res = await fetch("/api/tryon", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        shopperImage: req.personImage,
-        garmentImage: req.garmentImage,
+        shopperImage,
+        garmentImage,
         mode: "tryon",
         category: req.category ?? "one-pieces",
         instruction: req.garmentName,

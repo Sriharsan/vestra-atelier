@@ -242,8 +242,8 @@ export function TryOnDemo({ initialGarmentId }: { initialGarmentId?: string } = 
           Upload your photo, <span className="italic text-saffron-deep">try it on.</span>
         </h2>
         <p className="mt-3 max-w-lg text-sm text-ink-soft">
-          Pick a person, choose a look, and see how it fits. Your photo stays in your browser during
-          demo mode.
+          Pick a person, choose a look, and see how it fits. In demo mode, your photo stays in your
+          browser.
         </p>
       </div>
 
